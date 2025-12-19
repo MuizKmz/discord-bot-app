@@ -99,7 +99,13 @@ const ORIGINAL_WORDS = [
   "cogankata", "balai", "dewan", "balairongseri", "balainobat", "nobat",
   "genderang", "nafiri", "serunai", "gong", "kenong", "bonang", "angklung",
   "rebab", "sitar", "gambus", "kompang", "hadrah", "marwas", "serampang",
-  "joget", "zapin", "inang", "makyong", "menora", "wayangkul"
+  "joget", "zapin", "inang", "makyong", "menora", "wayangkul",
+  "titah", "tatkala", "seantero", "santapan", "mahligai", "wasilah",
+  "rebana", "kerongsang", "tempayan", "serambi", "belukar", "perigi",
+  "lesung", "serunding", "lemang", "dodol", "muafakat", "tatasusila",
+  "maruah", "beranda", "halaman", "dangau", "bendul", "alu",
+  "nyiru", "tempurung", "belanga", "kendi", "tampi", "kukusan",
+  "musyawarah", "gerimis", "sepoi"
 ]; 
 
 // ===== PERKATAAN EKSKLUSIF =====
