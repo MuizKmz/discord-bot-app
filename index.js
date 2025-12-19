@@ -321,10 +321,15 @@ client.on("messageCreate", async (message) => {
 
   const content = message.content.toLowerCase();
 
-  // Tips command - Show all available commands
+  // Tips command - Show all available commands (Admin only)
   if (content === "!tips" || content === "!help" || content === "!commands") {
+    if (!isAdmin(message.author.id)) {
+      message.reply("❌ Arahan ini hanya untuk admin!");
+      return;
+    }
+    
     const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(14);
-    const isUserAdmin = isAdmin(message.author.id);
+    const isUserAdmin = true; // Already verified admin above
     
     let tipsText = `${decorativeLine}\n\n`;
     tipsText += `## 📚 Panduan Arahan Bot\n\n`;
@@ -370,8 +375,13 @@ client.on("messageCreate", async (message) => {
     return;
   }
 
-  // Arahan reset/henti permainan
+  // Arahan reset/henti permainan (Admin only)
   if (content === "!resetteka" || content === "!henti") {
+    if (!isAdmin(message.author.id)) {
+      message.reply("❌ Arahan ini hanya untuk admin!");
+      return;
+    }
+    
     if (!active) {
       return;
     }
@@ -611,8 +621,13 @@ client.on("messageCreate", async (message) => {
     return;
   }
 
-  // Mula permainan
+  // Mula permainan (Admin only)
   if (content === "!teka") {
+    if (!isAdmin(message.author.id)) {
+      message.reply("❌ Arahan ini hanya untuk admin!");
+      return;
+    }
+    
     if (active) {
       // Abaikan jika permainan sedang berjalan
       return;
