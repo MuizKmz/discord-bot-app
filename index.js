@@ -321,6 +321,55 @@ client.on("messageCreate", async (message) => {
 
   const content = message.content.toLowerCase();
 
+  // Tips command - Show all available commands
+  if (content === "!tips" || content === "!help" || content === "!commands") {
+    const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(14);
+    const isUserAdmin = isAdmin(message.author.id);
+    
+    let tipsText = `${decorativeLine}\n\n`;
+    tipsText += `## 📚 Panduan Arahan Bot\n\n`;
+    
+    // Game Commands
+    tipsText += `### 🎮 Arahan Permainan\n\n`;
+    tipsText += `\`!teka\` - Mula permainan teka perkataan baharu\n`;
+    tipsText += `-# Taip huruf atau perkataan penuh untuk meneka\n\n`;
+    
+    tipsText += `\`!skor\` atau \`!leaderboard\` - Papar papan skor teratas\n`;
+    tipsText += `-# Lihat siapa pemain terbaik!\n\n`;
+    
+    tipsText += `\`!resetteka\` atau \`!henti\` - Hentikan permainan semasa\n`;
+    tipsText += `-# Papan skor akan direset\n\n`;
+    
+    // Admin Commands (only show if user is admin)
+    if (isUserAdmin) {
+      tipsText += `### 🔐 Arahan Admin\n\n`;
+      
+      tipsText += `**Pengurusan Perkataan:**\n`;
+      tipsText += `\`!listwords\` atau \`!lihat\` - Papar semua perkataan\n`;
+      tipsText += `\`!addword <perkataan>\` - Tambah perkataan baharu\n`;
+      tipsText += `\`!addword <perkataan> exclusive\` - Tambah perkataan eksklusif\n`;
+      tipsText += `\`!editword <lama> <baru>\` - Tukar perkataan\n`;
+      tipsText += `\`!deleteword <perkataan>\` - Padam perkataan\n`;
+      tipsText += `\`!searchword <kata>\` - Cari perkataan\n`;
+      tipsText += `\`!wordstats\` - Papar statistik perkataan\n\n`;
+      
+      tipsText += `\`!adminhelp\` - Panduan penuh arahan admin\n\n`;
+    }
+    
+    // How to Play
+    tipsText += `### 💡 Cara Bermain\n\n`;
+    tipsText += `1️⃣ Taip \`!teka\` untuk mula\n`;
+    tipsText += `2️⃣ Teka huruf dengan taip huruf (contoh: \`a\`)\n`;
+    tipsText += `3️⃣ Atau teka perkataan penuh (contoh: \`istana\`)\n`;
+    tipsText += `4️⃣ Anda ada **10 percubaan** untuk setiap perkataan\n`;
+    tipsText += `5️⃣ Selesaikan **${ORIGINAL_WORDS.length + EXCLUSIVE_WORDS.length} perkataan** tradisional Melayu!\n\n`;
+    
+    tipsText += `${decorativeLine}`;
+    
+    await sendLongMessage(message.channel, tipsText);
+    return;
+  }
+
   // Arahan reset/henti permainan
   if (content === "!resetteka" || content === "!henti") {
     if (!active) {
