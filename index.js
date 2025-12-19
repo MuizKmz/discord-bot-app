@@ -188,7 +188,7 @@ function formatUpcomingWord(word) {
 function renderBoard(showHeader = false, isNextWord = false) {
   let output = "";
   
-  const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(14);
+  const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(12);
   
   // Semak jika perkataan semasa selesai
   let currentWordSolved = true;
@@ -286,7 +286,7 @@ async function sendLongMessage(channel, content) {
 }
 
 function formatWordList(words, title, isExclusive = false) {
-  const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(14);
+  const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(12);
   const diamond = isExclusive ? '<a:SAC_diamond1:893046074888040499>' : '<a:SAC_diamond2:893045927009472542>';
   
   let output = `${decorativeLine}\n\n## ${diamond} ${title}\n\n`;
@@ -328,7 +328,7 @@ client.on("messageCreate", async (message) => {
       return;
     }
     
-    const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(14);
+    const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(12);
     const isUserAdmin = true; // Already verified admin above
     
     let tipsText = `${decorativeLine}\n\n`;
@@ -399,7 +399,7 @@ client.on("messageCreate", async (message) => {
       return;
     }
     
-    const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(14);
+    const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(12);
     let leaderboardText = `${decorativeLine}\n\n## <a:BlueStar_SAC:886125020286451752> Papan Skor Teratas\n\n`;
     
     topPlayers.forEach((player, index) => {
@@ -552,7 +552,7 @@ client.on("messageCreate", async (message) => {
       return;
     }
     
-    const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(14);
+    const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(12);
     let result = `${decorativeLine}\n\n## 🔍 Keputusan Carian: "${searchTerm}"\n\n`;
     
     if (normalMatches.length > 0) {
@@ -577,7 +577,7 @@ client.on("messageCreate", async (message) => {
       return;
     }
     
-    const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(14);
+    const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(12);
     const helpText = `${decorativeLine}\n\n## 🛠️ Arahan Admin\n\n` +
       `**📋 Lihat Perkataan**\n` +
       `\`!listwords\` atau \`!lihat\` - Papar semua perkataan\n\n` +
@@ -605,7 +605,7 @@ client.on("messageCreate", async (message) => {
       return;
     }
     
-    const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(14);
+    const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(12);
     const totalWords = ORIGINAL_WORDS.length + EXCLUSIVE_WORDS.length;
     
     const statsText = `${decorativeLine}\n\n## 📊 Statistik Perkataan\n\n` +
@@ -675,7 +675,7 @@ client.on("messageCreate", async (message) => {
       // Berikan mata untuk meneka perkataan penuh
       addPoints(message.author.id, message.author.username, 1, currentWord);
       
-      const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(14);
+      const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(12);
       // Gunakan diamond eksklusif jika perkataan dalam senarai eksklusif
       const diamondEmoji = EXCLUSIVE_WORDS.includes(currentWord) 
         ? '<a:SAC_diamond1:893046074888040499>' 
@@ -728,7 +728,7 @@ client.on("messageCreate", async (message) => {
   if (content.length === 1 && /^[a-z]$/.test(content)) {
     if (guessedLetters.has(content)) {
       // Maklumkan huruf sudah diteka
-      const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(14);
+      const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(12);
       message.reply(`Huruf **\`${content}\`** <:1SAC_PepeNo:885753930007593000> sudah diteka. Cari yang lain!\n\n${decorativeLine}`);
       return;
     }
