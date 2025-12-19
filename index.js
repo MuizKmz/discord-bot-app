@@ -1,6 +1,6 @@
 // index.js
 require('dotenv').config();
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -460,18 +460,73 @@ client.on("messageCreate", async (message) => {
     console.log('  ✅ User is admin - showing words');
     const normalPages = formatWordList(ORIGINAL_WORDS, "Perkataan Biasa", false);
     const exclusivePages = formatWordList(EXCLUSIVE_WORDS, "Perkataan Eksklusif", true);
+    const allPages = [...normalPages, ...exclusivePages];
     
-    // Send all normal word pages
-    for (const page of normalPages) {
-      await message.channel.send(page);
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
+    let currentPage = 0;
     
-    // Send all exclusive word pages
-    for (const page of exclusivePages) {
-      await message.channel.send(page);
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
+    // Create navigation buttons
+    const createButtons = (pageIndex) => {
+      const row = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('prev')
+            .setLabel('◀️ Sebelum')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(pageIndex === 0),
+          new ButtonBuilder()
+            .setCustomId('next')
+            .setLabel('Seterus ▶️')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(pageIndex === allPages.length - 1),
+          new ButtonBuilder()
+            .setCustomId('close')
+            .setLabel('❌ Tutup')
+            .setStyle(ButtonStyle.Danger)
+        );
+      return row;
+    };
+    
+    // Send initial page with buttons
+    const sentMessage = await message.channel.send({
+      content: allPages[currentPage],
+      components: [createButtons(currentPage)]
+    });
+    
+    // Create button collector
+    const collector = sentMessage.createMessageComponentCollector({
+      filter: i => i.user.id === message.author.id,
+      time: 300000 // 5 minutes
+    });
+    
+    collector.on('collect', async interaction => {
+      if (interaction.customId === 'prev' && currentPage > 0) {
+        currentPage--;
+      } else if (interaction.customId === 'next' && currentPage < allPages.length - 1) {
+        currentPage++;
+      } else if (interaction.customId === 'close') {
+        await interaction.update({
+          content: allPages[currentPage],
+          components: [] // Remove buttons
+        });
+        collector.stop();
+        return;
+      }
+      
+      await interaction.update({
+        content: allPages[currentPage],
+        components: [createButtons(currentPage)]
+      });
+    });
+    
+    collector.on('end', async () => {
+      try {
+        await sentMessage.edit({
+          components: [] // Remove buttons after timeout
+        });
+      } catch (error) {
+        // Message might be deleted, ignore error
+      }
+    });
     
     return;
   }
