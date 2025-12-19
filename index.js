@@ -294,21 +294,46 @@ async function sendLongMessage(channel, content) {
 function formatWordList(words, title, isExclusive = false) {
   const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(12);
   const diamond = isExclusive ? '<a:SAC_diamond1:893046074888040499>' : '<a:SAC_diamond2:893045927009472542>';
-  
-  let output = `${decorativeLine}\n\n## ${diamond} ${title}\n\n`;
-  output += `-# Total: **${words.length}** perkataan\n\n`;
-  
-  // Display in columns
   const columns = 3;
   const sortedWords = [...words].sort();
   
-  for (let i = 0; i < sortedWords.length; i += columns) {
-    const row = sortedWords.slice(i, i + columns);
-    output += row.map((word, idx) => `\`${i + idx + 1}.\` ${word}`).join('  |  ') + '\n';
+  // Calculate words per page (aim for ~1500 chars per page)
+  const wordsPerPage = 60; // ~20 rows × 3 columns
+  const totalPages = Math.ceil(sortedWords.length / wordsPerPage);
+  const pages = [];
+  
+  for (let pageNum = 0; pageNum < totalPages; pageNum++) {
+    const startIdx = pageNum * wordsPerPage;
+    const endIdx = Math.min(startIdx + wordsPerPage, sortedWords.length);
+    const pageWords = sortedWords.slice(startIdx, endIdx);
+    
+    let pageContent = `${decorativeLine}\n\n`;
+    pageContent += `## ${diamond} ${title}`;
+    
+    // Add page number if multiple pages
+    if (totalPages > 1) {
+      pageContent += ` - 📄 Halaman ${pageNum + 1}/${totalPages}`;
+    }
+    
+    pageContent += `\n\n-# Total: **${words.length}** perkataan`;
+    
+    if (totalPages > 1) {
+      pageContent += ` | Paparan: ${startIdx + 1}-${endIdx}`;
+    }
+    
+    pageContent += `\n\n`;
+    
+    // Display words in columns
+    for (let i = 0; i < pageWords.length; i += columns) {
+      const row = pageWords.slice(i, i + columns);
+      pageContent += row.map((word, idx) => `\`${startIdx + i + idx + 1}.\` ${word}`).join('  |  ') + '\n';
+    }
+    
+    pageContent += `\n${decorativeLine}`;
+    pages.push(pageContent);
   }
   
-  output += `\n${decorativeLine}`;
-  return output;
+  return pages;
 }
 
 // ===== MULA PERMAINAN =====
@@ -433,13 +458,21 @@ client.on("messageCreate", async (message) => {
     }
     
     console.log('  ✅ User is admin - showing words');
-    const normalWords = formatWordList(ORIGINAL_WORDS, "Perkataan Biasa", false);
-    const exclusiveWords = formatWordList(EXCLUSIVE_WORDS, "Perkataan Eksklusif", true);
+    const normalPages = formatWordList(ORIGINAL_WORDS, "Perkataan Biasa", false);
+    const exclusivePages = formatWordList(EXCLUSIVE_WORDS, "Perkataan Eksklusif", true);
     
-    // Use sendLongMessage to handle message splitting
-    await sendLongMessage(message.channel, normalWords);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    await sendLongMessage(message.channel, exclusiveWords);
+    // Send all normal word pages
+    for (const page of normalPages) {
+      await message.channel.send(page);
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    // Send all exclusive word pages
+    for (const page of exclusivePages) {
+      await message.channel.send(page);
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
     return;
   }
 
