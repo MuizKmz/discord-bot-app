@@ -233,6 +233,10 @@ function renderBoard(showHeader = false, isNextWord = false) {
 
 // ===== HELPER: Check if user is admin =====
 function isAdmin(userId) {
+  console.log('🔍 Admin Check:');
+  console.log('  User ID:', userId);
+  console.log('  Admin IDs:', ADMIN_IDS);
+  console.log('  Is Admin:', ADMIN_IDS.includes(userId));
   return ADMIN_IDS.includes(userId);
 }
 
@@ -311,11 +315,16 @@ client.on("messageCreate", async (message) => {
   
   // List all words
   if (content === "!listwords" || content === "!lihat") {
+    console.log('📋 !listwords command triggered');
+    console.log('  Message author ID:', message.author.id);
+    
     if (!isAdmin(message.author.id)) {
+      console.log('  ❌ User is not admin');
       message.reply("❌ Arahan ini hanya untuk admin!");
       return;
     }
     
+    console.log('  ✅ User is admin - showing words');
     const normalWords = formatWordList(ORIGINAL_WORDS, "Perkataan Biasa", false);
     const exclusiveWords = formatWordList(EXCLUSIVE_WORDS, "Perkataan Eksklusif", true);
     
@@ -693,6 +702,7 @@ client.once("ready", () => {
   console.log(`Bot logged in as ${client.user.tag}`);
   loadLeaderboard();
   console.log('Leaderboard loaded!');
+  console.log('🔐 Admin IDs configured:', ADMIN_IDS.length > 0 ? ADMIN_IDS : 'None (No admins set!)');
 });
 
 client.on("error", (error) => {
