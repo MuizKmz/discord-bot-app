@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: teka-kata-bot
+    env: node
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: DISCORD_BOT_TOKEN
+        sync: false
+      - key: ALLOWED_SERVERS
+        sync: false
+      - key: ALLOWED_CHANNELS
+        sync: false
