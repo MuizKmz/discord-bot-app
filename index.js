@@ -404,8 +404,7 @@ client.on("messageCreate", async (message) => {
     
     topPlayers.forEach((player, index) => {
       const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
-      const wordsGuessed = player.words && player.words.length > 0 ? player.words.join(', ') : 'tiada';
-      leaderboardText += `${medal} **${player.username}** - ${player.points} mata\n-# Perkataan: ${wordsGuessed}\n\n`;
+      leaderboardText += `${medal} **${player.username}** - **${player.points}** mata\n\n`;
     });
     
     leaderboardText += `${decorativeLine}`;
