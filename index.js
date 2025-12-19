@@ -366,7 +366,7 @@ client.on("messageCreate", async (message) => {
     tipsText += `1️⃣ Taip \`!teka\` untuk mula\n`;
     tipsText += `2️⃣ Teka huruf dengan taip huruf (contoh: \`a\`)\n`;
     tipsText += `3️⃣ Atau teka perkataan penuh (contoh: \`istana\`)\n`;
-    tipsText += `4️⃣ Anda ada **10 percubaan** untuk setiap perkataan\n`;
+    tipsText += `4️⃣ **Teka tanpa had!** Semua pemain boleh teka bersama\n`;
     tipsText += `5️⃣ Selesaikan **${ORIGINAL_WORDS.length + EXCLUSIVE_WORDS.length} perkataan** tradisional Melayu!\n\n`;
     
     tipsText += `${decorativeLine}`;
