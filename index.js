@@ -241,6 +241,50 @@ function isAdmin(userId) {
 }
 
 // ===== HELPER: Format word list with table =====
+// Helper function: Split message into chunks under 2000 characters
+async function sendLongMessage(channel, content) {
+  const MAX_LENGTH = 1900; // Leave buffer for safety
+  
+  if (content.length <= MAX_LENGTH) {
+    try {
+      await channel.send(content);
+    } catch (error) {
+      console.error('❌ Error sending message:', error.message);
+      console.error('   Message length:', content.length);
+    }
+    return;
+  }
+  
+  // Split by lines to avoid breaking formatting
+  const lines = content.split('\n');
+  let currentChunk = '';
+  
+  for (const line of lines) {
+    if ((currentChunk + line + '\n').length > MAX_LENGTH) {
+      // Send current chunk
+      if (currentChunk) {
+        try {
+          await channel.send(currentChunk.trim());
+          await new Promise(resolve => setTimeout(resolve, 300)); // Brief delay
+        } catch (error) {
+          console.error('❌ Error sending chunk:', error.message);
+        }
+        currentChunk = '';
+      }
+    }
+    currentChunk += line + '\n';
+  }
+  
+  // Send remaining chunk
+  if (currentChunk.trim()) {
+    try {
+      await channel.send(currentChunk.trim());
+    } catch (error) {
+      console.error('❌ Error sending final chunk:', error.message);
+    }
+  }
+}
+
 function formatWordList(words, title, isExclusive = false) {
   const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(14);
   const diamond = isExclusive ? '<a:SAC_diamond1:893046074888040499>' : '<a:SAC_diamond2:893045927009472542>';
@@ -328,10 +372,10 @@ client.on("messageCreate", async (message) => {
     const normalWords = formatWordList(ORIGINAL_WORDS, "Perkataan Biasa", false);
     const exclusiveWords = formatWordList(EXCLUSIVE_WORDS, "Perkataan Eksklusif", true);
     
-    message.channel.send(normalWords);
-    setTimeout(() => {
-      message.channel.send(exclusiveWords);
-    }, 500);
+    // Use sendLongMessage to handle message splitting
+    await sendLongMessage(message.channel, normalWords);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    await sendLongMessage(message.channel, exclusiveWords);
     return;
   }
 
