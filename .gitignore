@@ -1,0 +1,5 @@
+.env
+node_modules/
+leaderboard.json
+watchlist.json
+package-lock.json
