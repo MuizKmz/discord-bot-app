@@ -79,6 +79,12 @@ const ALLOWED_CHANNELS = process.env.ALLOWED_CHANNELS
   ? process.env.ALLOWED_CHANNELS.split(',').map(id => id.trim()).filter(id => id.length > 0)
   : [];
 
+// ===== ADMIN IDS =====
+// Add your Discord User ID here for admin commands
+const ADMIN_IDS = process.env.ADMIN_IDS 
+  ? process.env.ADMIN_IDS.split(',').map(id => id.trim()).filter(id => id.length > 0)
+  : [];
+
 // ===== SENARAI PERKATAAN =====
 const ORIGINAL_WORDS = [
   "adinda", "kakanda", "beta", "patik", "hamba", "tuanku", "seri", "duli",
@@ -225,6 +231,32 @@ function renderBoard(showHeader = false, isNextWord = false) {
   return output;
 }
 
+// ===== HELPER: Check if user is admin =====
+function isAdmin(userId) {
+  return ADMIN_IDS.includes(userId);
+}
+
+// ===== HELPER: Format word list with table =====
+function formatWordList(words, title, isExclusive = false) {
+  const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(14);
+  const diamond = isExclusive ? '<a:SAC_diamond1:893046074888040499>' : '<a:SAC_diamond2:893045927009472542>';
+  
+  let output = `${decorativeLine}\n\n## ${diamond} ${title}\n\n`;
+  output += `-# Total: **${words.length}** perkataan\n\n`;
+  
+  // Display in columns
+  const columns = 3;
+  const sortedWords = [...words].sort();
+  
+  for (let i = 0; i < sortedWords.length; i += columns) {
+    const row = sortedWords.slice(i, i + columns);
+    output += row.map((word, idx) => `\`${i + idx + 1}.\` ${word}`).join('  |  ') + '\n';
+  }
+  
+  output += `\n${decorativeLine}`;
+  return output;
+}
+
 // ===== MULA PERMAINAN =====
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
@@ -272,6 +304,208 @@ client.on("messageCreate", async (message) => {
     leaderboardText += `${decorativeLine}`;
     
     message.channel.send(leaderboardText);
+    return;
+  }
+
+  // ===== ADMIN COMMANDS =====
+  
+  // List all words
+  if (content === "!listwords" || content === "!lihat") {
+    if (!isAdmin(message.author.id)) {
+      message.reply("❌ Arahan ini hanya untuk admin!");
+      return;
+    }
+    
+    const normalWords = formatWordList(ORIGINAL_WORDS, "Perkataan Biasa", false);
+    const exclusiveWords = formatWordList(EXCLUSIVE_WORDS, "Perkataan Eksklusif", true);
+    
+    message.channel.send(normalWords);
+    setTimeout(() => {
+      message.channel.send(exclusiveWords);
+    }, 500);
+    return;
+  }
+
+  // Add word
+  if (content.startsWith("!addword ") || content.startsWith("!tambah ")) {
+    if (!isAdmin(message.author.id)) {
+      message.reply("❌ Arahan ini hanya untuk admin!");
+      return;
+    }
+    
+    const parts = message.content.split(' ');
+    if (parts.length < 2) {
+      message.reply("❌ Format: `!addword <perkataan>` atau `!addword <perkataan> exclusive`");
+      return;
+    }
+    
+    const newWord = parts[1].toLowerCase().trim();
+    const isExclusive = parts[2] && parts[2].toLowerCase() === 'exclusive';
+    
+    // Check if word already exists
+    if (ORIGINAL_WORDS.includes(newWord) || EXCLUSIVE_WORDS.includes(newWord)) {
+      message.reply(`❌ Perkataan **${newWord}** sudah wujud!`);
+      return;
+    }
+    
+    // Add to appropriate list
+    if (isExclusive) {
+      EXCLUSIVE_WORDS.push(newWord);
+      const diamond = '<a:SAC_diamond1:893046074888040499>';
+      message.reply(`✅ ${diamond} Perkataan **${newWord}** berjaya ditambah ke senarai eksklusif!\n-# Total perkataan eksklusif: ${EXCLUSIVE_WORDS.length}`);
+    } else {
+      ORIGINAL_WORDS.push(newWord);
+      const diamond = '<a:SAC_diamond2:893045927009472542>';
+      message.reply(`✅ ${diamond} Perkataan **${newWord}** berjaya ditambah ke senarai biasa!\n-# Total perkataan biasa: ${ORIGINAL_WORDS.length}`);
+    }
+    return;
+  }
+
+  // Delete word
+  if (content.startsWith("!deleteword ") || content.startsWith("!padam ")) {
+    if (!isAdmin(message.author.id)) {
+      message.reply("❌ Arahan ini hanya untuk admin!");
+      return;
+    }
+    
+    const wordToDelete = message.content.split(' ')[1].toLowerCase().trim();
+    
+    const normalIndex = ORIGINAL_WORDS.indexOf(wordToDelete);
+    const exclusiveIndex = EXCLUSIVE_WORDS.indexOf(wordToDelete);
+    
+    if (normalIndex !== -1) {
+      ORIGINAL_WORDS.splice(normalIndex, 1);
+      message.reply(`✅ Perkataan **${wordToDelete}** berjaya dipadam dari senarai biasa!\n-# Total perkataan biasa: ${ORIGINAL_WORDS.length}`);
+    } else if (exclusiveIndex !== -1) {
+      EXCLUSIVE_WORDS.splice(exclusiveIndex, 1);
+      message.reply(`✅ Perkataan **${wordToDelete}** berjaya dipadam dari senarai eksklusif!\n-# Total perkataan eksklusif: ${EXCLUSIVE_WORDS.length}`);
+    } else {
+      message.reply(`❌ Perkataan **${wordToDelete}** tidak dijumpai!`);
+    }
+    return;
+  }
+
+  // Edit word
+  if (content.startsWith("!editword ") || content.startsWith("!edit ")) {
+    if (!isAdmin(message.author.id)) {
+      message.reply("❌ Arahan ini hanya untuk admin!");
+      return;
+    }
+    
+    const parts = message.content.split(' ');
+    if (parts.length < 3) {
+      message.reply("❌ Format: `!editword <perkataan_lama> <perkataan_baru>`");
+      return;
+    }
+    
+    const oldWord = parts[1].toLowerCase().trim();
+    const newWord = parts[2].toLowerCase().trim();
+    
+    const normalIndex = ORIGINAL_WORDS.indexOf(oldWord);
+    const exclusiveIndex = EXCLUSIVE_WORDS.indexOf(oldWord);
+    
+    // Check if new word already exists
+    if (ORIGINAL_WORDS.includes(newWord) || EXCLUSIVE_WORDS.includes(newWord)) {
+      message.reply(`❌ Perkataan baru **${newWord}** sudah wujud!`);
+      return;
+    }
+    
+    if (normalIndex !== -1) {
+      ORIGINAL_WORDS[normalIndex] = newWord;
+      message.reply(`✅ Perkataan **${oldWord}** berjaya ditukar kepada **${newWord}** (biasa)`);
+    } else if (exclusiveIndex !== -1) {
+      EXCLUSIVE_WORDS[exclusiveIndex] = newWord;
+      const diamond = '<a:SAC_diamond1:893046074888040499>';
+      message.reply(`✅ ${diamond} Perkataan **${oldWord}** berjaya ditukar kepada **${newWord}** (eksklusif)`);
+    } else {
+      message.reply(`❌ Perkataan lama **${oldWord}** tidak dijumpai!`);
+    }
+    return;
+  }
+
+  // Search word
+  if (content.startsWith("!searchword ") || content.startsWith("!cari ")) {
+    if (!isAdmin(message.author.id)) {
+      message.reply("❌ Arahan ini hanya untuk admin!");
+      return;
+    }
+    
+    const searchTerm = message.content.split(' ')[1].toLowerCase().trim();
+    
+    const normalMatches = ORIGINAL_WORDS.filter(word => word.includes(searchTerm));
+    const exclusiveMatches = EXCLUSIVE_WORDS.filter(word => word.includes(searchTerm));
+    
+    if (normalMatches.length === 0 && exclusiveMatches.length === 0) {
+      message.reply(`❌ Tiada perkataan yang mengandungi **"${searchTerm}"**`);
+      return;
+    }
+    
+    const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(14);
+    let result = `${decorativeLine}\n\n## 🔍 Keputusan Carian: "${searchTerm}"\n\n`;
+    
+    if (normalMatches.length > 0) {
+      result += `**Perkataan Biasa (${normalMatches.length}):**\n`;
+      result += normalMatches.map(w => `• ${w}`).join('\n') + '\n\n';
+    }
+    
+    if (exclusiveMatches.length > 0) {
+      result += `**Perkataan Eksklusif (${exclusiveMatches.length}):** <a:SAC_diamond1:893046074888040499>\n`;
+      result += exclusiveMatches.map(w => `• ${w}`).join('\n') + '\n\n';
+    }
+    
+    result += `${decorativeLine}`;
+    message.channel.send(result);
+    return;
+  }
+
+  // Admin help command
+  if (content === "!adminhelp" || content === "!bantuan") {
+    if (!isAdmin(message.author.id)) {
+      message.reply("❌ Arahan ini hanya untuk admin!");
+      return;
+    }
+    
+    const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(14);
+    const helpText = `${decorativeLine}\n\n## 🛠️ Arahan Admin\n\n` +
+      `**📋 Lihat Perkataan**\n` +
+      `\`!listwords\` atau \`!lihat\` - Papar semua perkataan\n\n` +
+      `**➕ Tambah Perkataan**\n` +
+      `\`!addword <perkataan>\` - Tambah perkataan biasa\n` +
+      `\`!addword <perkataan> exclusive\` - Tambah perkataan eksklusif\n\n` +
+      `**✏️ Edit Perkataan**\n` +
+      `\`!editword <lama> <baru>\` - Tukar perkataan\n\n` +
+      `**🗑️ Padam Perkataan**\n` +
+      `\`!deleteword <perkataan>\` - Padam perkataan\n\n` +
+      `**🔍 Cari Perkataan**\n` +
+      `\`!searchword <kata>\` - Cari perkataan mengandungi kata\n\n` +
+      `**📊 Statistik**\n` +
+      `\`!wordstats\` - Papar statistik perkataan\n\n` +
+      `${decorativeLine}`;
+    
+    message.channel.send(helpText);
+    return;
+  }
+
+  // Word statistics
+  if (content === "!wordstats" || content === "!stats") {
+    if (!isAdmin(message.author.id)) {
+      message.reply("❌ Arahan ini hanya untuk admin!");
+      return;
+    }
+    
+    const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(14);
+    const totalWords = ORIGINAL_WORDS.length + EXCLUSIVE_WORDS.length;
+    
+    const statsText = `${decorativeLine}\n\n## 📊 Statistik Perkataan\n\n` +
+      `**Total Perkataan:** ${totalWords}\n` +
+      `├─ <a:SAC_diamond2:893045927009472542> Perkataan Biasa: ${ORIGINAL_WORDS.length}\n` +
+      `└─ <a:SAC_diamond1:893046074888040499> Perkataan Eksklusif: ${EXCLUSIVE_WORDS.length}\n\n` +
+      `**Status Permainan:**\n` +
+      `├─ Aktif: ${active ? 'Ya ✅' : 'Tidak ❌'}\n` +
+      `└─ Perkataan Selesai: ${completedWords.length}\n\n` +
+      `${decorativeLine}`;
+    
+    message.channel.send(statsText);
     return;
   }
 
