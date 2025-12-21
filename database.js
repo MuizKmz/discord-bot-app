@@ -1,0 +1,222 @@
+// database.js - PostgreSQL Database Module
+const { Pool } = require('pg');
+const fs = require('fs');
+const path = require('path');
+
+// Create PostgreSQL connection pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
+
+// Initialize database tables
+async function initDatabase() {
+  const client = await pool.connect();
+  
+  try {
+    // Create leaderboard table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS leaderboard (
+        user_id VARCHAR(255) PRIMARY KEY,
+        username VARCHAR(255) NOT NULL,
+        points INTEGER DEFAULT 0,
+        words TEXT[] DEFAULT ARRAY[]::TEXT[],
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    console.log('✅ Database tables initialized');
+  } catch (error) {
+    console.error('❌ Error initializing database:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Load leaderboard from database
+async function loadLeaderboardFromDB() {
+  const client = await pool.connect();
+  
+  try {
+    const result = await client.query('SELECT * FROM leaderboard');
+    const leaderboard = {};
+    
+    result.rows.forEach(row => {
+      leaderboard[row.user_id] = {
+        username: row.username,
+        points: row.points,
+        words: row.words || []
+      };
+    });
+    
+    console.log(`✅ Leaderboard loaded from database: ${result.rows.length} users`);
+    return leaderboard;
+  } catch (error) {
+    console.error('❌ Error loading leaderboard from database:', error);
+    return {};
+  } finally {
+    client.release();
+  }
+}
+
+// Save entire leaderboard to database
+async function saveLeaderboardToDB(leaderboard) {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+    
+    for (const [userId, data] of Object.entries(leaderboard)) {
+      await client.query(`
+        INSERT INTO leaderboard (user_id, username, points, words, updated_at)
+        VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+        ON CONFLICT (user_id) 
+        DO UPDATE SET 
+          username = EXCLUDED.username,
+          points = EXCLUDED.points,
+          words = EXCLUDED.words,
+          updated_at = CURRENT_TIMESTAMP
+      `, [userId, data.username, data.points, data.words]);
+    }
+    
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('❌ Error saving leaderboard to database:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Add or update single user
+async function updateUserPoints(userId, username, points, word) {
+  const client = await pool.connect();
+  
+  try {
+    // First, get current user data
+    const result = await client.query(
+      'SELECT points, words FROM leaderboard WHERE user_id = $1',
+      [userId]
+    );
+    
+    let newPoints = points;
+    let newWords = word ? [word] : [];
+    
+    if (result.rows.length > 0) {
+      // User exists, increment
+      newPoints = result.rows[0].points + points;
+      newWords = [...(result.rows[0].words || [])];
+      if (word) newWords.push(word);
+    }
+    
+    // Upsert user
+    await client.query(`
+      INSERT INTO leaderboard (user_id, username, points, words, updated_at)
+      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+      ON CONFLICT (user_id)
+      DO UPDATE SET
+        username = EXCLUDED.username,
+        points = EXCLUDED.points,
+        words = EXCLUDED.words,
+        updated_at = CURRENT_TIMESTAMP
+    `, [userId, username, newPoints, newWords]);
+    
+  } catch (error) {
+    console.error('❌ Error updating user points:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Get top players
+async function getTopPlayersFromDB(limit = 10) {
+  const client = await pool.connect();
+  
+  try {
+    const result = await client.query(
+      'SELECT user_id, username, points, words FROM leaderboard ORDER BY points DESC LIMIT $1',
+      [limit]
+    );
+    
+    return result.rows.map(row => ({
+      userId: row.user_id,
+      username: row.username,
+      points: row.points,
+      words: row.words || []
+    }));
+  } catch (error) {
+    console.error('❌ Error getting top players:', error);
+    return [];
+  } finally {
+    client.release();
+  }
+}
+
+// Reset leaderboard
+async function resetLeaderboardDB() {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('TRUNCATE TABLE leaderboard');
+    console.log('✅ Leaderboard reset');
+  } catch (error) {
+    console.error('❌ Error resetting leaderboard:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Migrate JSON data to database (one-time migration)
+async function migrateJSONToDatabase() {
+  const LEADERBOARD_FILE = path.join(__dirname, 'leaderboard.json');
+  
+  if (!fs.existsSync(LEADERBOARD_FILE)) {
+    console.log('⚠️ No leaderboard.json found, skipping migration');
+    return;
+  }
+  
+  try {
+    const data = fs.readFileSync(LEADERBOARD_FILE, 'utf8');
+    const leaderboard = JSON.parse(data);
+    
+    if (Object.keys(leaderboard).length === 0) {
+      console.log('⚠️ Leaderboard.json is empty, skipping migration');
+      return;
+    }
+    
+    console.log(`🔄 Migrating ${Object.keys(leaderboard).length} users from JSON to database...`);
+    await saveLeaderboardToDB(leaderboard);
+    console.log('✅ Migration completed successfully!');
+    
+    // Backup the JSON file
+    const backupFile = path.join(__dirname, `leaderboard.json.backup.${Date.now()}`);
+    fs.copyFileSync(LEADERBOARD_FILE, backupFile);
+    console.log(`✅ JSON backed up to: ${backupFile}`);
+    
+  } catch (error) {
+    console.error('❌ Error during migration:', error);
+    throw error;
+  }
+}
+
+// Close database connection
+async function closeDatabase() {
+  await pool.end();
+  console.log('✅ Database connection closed');
+}
+
+module.exports = {
+  initDatabase,
+  loadLeaderboardFromDB,
+  saveLeaderboardToDB,
+  updateUserPoints,
+  getTopPlayersFromDB,
+  resetLeaderboardDB,
+  migrateJSONToDatabase,
+  closeDatabase
+};

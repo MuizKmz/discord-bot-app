@@ -3,6 +3,10 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const db = require('./database'); // PostgreSQL database module
+
+// Use database if DATABASE_URL is set, otherwise use JSON files
+const USE_DATABASE = !!process.env.DATABASE_URL;
 
 const client = new Client({
   intents: [
@@ -18,8 +22,11 @@ const client = new Client({
 // - loadLeaderboard() -> fetch from database
 // - saveLeaderboard() -> save to database
 // - Keep the same leaderboard object structure for easy migration
-const LEADERBOARD_FILE = path.join(__dirname, 'leaderboard.json');
-const BACKUP_DIR = path.join(__dirname, 'backups');
+
+// Use Railway volume if available, otherwise use current directory
+const DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || __dirname;
+const LEADERBOARD_FILE = path.join(DATA_DIR, 'leaderboard.json');
+const BACKUP_DIR = path.join(DATA_DIR, 'backups');
 let leaderboard = {};
 
 // Create backup directory if it doesn't exist
@@ -27,20 +34,27 @@ if (!fs.existsSync(BACKUP_DIR)) {
   fs.mkdirSync(BACKUP_DIR, { recursive: true });
 }
 
-// Load leaderboard from file
-function loadLeaderboard() {
-  try {
-    if (fs.existsSync(LEADERBOARD_FILE)) {
-      const data = fs.readFileSync(LEADERBOARD_FILE, 'utf8');
-      leaderboard = JSON.parse(data);
-      console.log(`✅ Leaderboard loaded: ${Object.keys(leaderboard).length} users`);
-    } else {
-      console.log('⚠️ No leaderboard file found, starting fresh');
+// Load leaderboard from file or database
+async function loadLeaderboard() {
+  if (USE_DATABASE) {
+    // Load from PostgreSQL
+    leaderboard = await db.loadLeaderboardFromDB();
+    console.log(`✅ Leaderboard loaded from database: ${Object.keys(leaderboard).length} users`);
+  } else {
+    // Load from JSON file
+    try {
+      if (fs.existsSync(LEADERBOARD_FILE)) {
+        const data = fs.readFileSync(LEADERBOARD_FILE, 'utf8');
+        leaderboard = JSON.parse(data);
+        console.log(`✅ Leaderboard loaded from file: ${Object.keys(leaderboard).length} users`);
+      } else {
+        console.log('⚠️ No leaderboard file found, starting fresh');
+      }
+    } catch (error) {
+      console.error('❌ Error loading leaderboard:', error);
+      // Try to load from latest backup
+      tryLoadFromBackup();
     }
-  } catch (error) {
-    console.error('❌ Error loading leaderboard:', error);
-    // Try to load from latest backup
-    tryLoadFromBackup();
   }
 }
 
@@ -69,16 +83,26 @@ function tryLoadFromBackup() {
   }
 }
 
-// Save leaderboard to file with backup
-function saveLeaderboard() {
-  try {
-    // Save main file
-    fs.writeFileSync(LEADERBOARD_FILE, JSON.stringify(leaderboard, null, 2));
-    
-    // Create timestamped backup every save (auto-cleanup old backups)
-    createBackup();
-  } catch (error) {
-    console.error('❌ Error saving leaderboard:', error);
+// Save leaderboard to file or database with backup
+async function saveLeaderboard() {
+  if (USE_DATABASE) {
+    // Save to PostgreSQL
+    try {
+      await db.saveLeaderboardToDB(leaderboard);
+    } catch (error) {
+      console.error('❌ Error saving leaderboard to database:', error);
+    }
+  } else {
+    // Save to JSON file
+    try {
+      // Save main file
+      fs.writeFileSync(LEADERBOARD_FILE, JSON.stringify(leaderboard, null, 2));
+      
+      // Create timestamped backup every save (auto-cleanup old backups)
+      createBackup();
+    } catch (error) {
+      console.error('❌ Error saving leaderboard:', error);
+    }
   }
 }
 
@@ -114,20 +138,39 @@ function cleanOldBackups(keepCount = 20) {
 }
 
 // Add points to user
-function addPoints(userId, username, points, word) {
-  if (!leaderboard[userId]) {
-    leaderboard[userId] = {
-      username: username,
-      points: 0,
-      words: []
-    };
+async function addPoints(userId, username, points, word) {
+  if (USE_DATABASE) {
+    // Update database directly
+    await db.updateUserPoints(userId, username, points, word);
+    // Also update in-memory copy for immediate access
+    if (!leaderboard[userId]) {
+      leaderboard[userId] = {
+        username: username,
+        points: 0,
+        words: []
+      };
+    }
+    leaderboard[userId].points += points;
+    leaderboard[userId].username = username;
+    if (word) {
+      leaderboard[userId].words.push(word);
+    }
+  } else {
+    // Update JSON file
+    if (!leaderboard[userId]) {
+      leaderboard[userId] = {
+        username: username,
+        points: 0,
+        words: []
+      };
+    }
+    leaderboard[userId].points += points;
+    leaderboard[userId].username = username; // Update username in case it changed
+    if (word) {
+      leaderboard[userId].words.push(word);
+    }
+    await saveLeaderboard();
   }
-  leaderboard[userId].points += points;
-  leaderboard[userId].username = username; // Update username in case it changed
-  if (word) {
-    leaderboard[userId].words.push(word);
-  }
-  saveLeaderboard();
 }
 
 // Get top players
@@ -1007,51 +1050,93 @@ client.on("messageCreate", async (message) => {
   }
 });
 
-client.once("clientReady", () => {
+client.once("clientReady", async () => {
   console.log(`Bot logged in as ${client.user.tag}`);
-  loadLeaderboard();
-  console.log('Leaderboard loaded!');
-  console.log('🔐 Admin IDs configured:', ADMIN_IDS.length > 0 ? ADMIN_IDS : 'None (No admins set!)');
   
-  // Auto-save every 5 minutes as extra safety
-  setInterval(() => {
-    saveLeaderboard();
-    console.log('✅ Auto-save completed');
-  }, 5 * 60 * 1000); // 5 minutes
+  if (USE_DATABASE) {
+    console.log('🔄 Using PostgreSQL database');
+    try {
+      // Initialize database tables
+      await db.initDatabase();
+      
+      // Check if we need to migrate from JSON to database
+      const LEADERBOARD_JSON = path.join(__dirname, 'leaderboard.json');
+      if (fs.existsSync(LEADERBOARD_JSON)) {
+        const data = JSON.parse(fs.readFileSync(LEADERBOARD_JSON, 'utf8'));
+        if (Object.keys(data).length > 0) {
+          console.log('🔄 Found existing leaderboard.json, migrating to database...');
+          await db.migrateJSONToDatabase();
+        }
+      }
+      
+      // Load leaderboard from database
+      await loadLeaderboard();
+      console.log('✅ Database connected and leaderboard loaded!');
+    } catch (error) {
+      console.error('❌ Database error:', error);
+      console.log('⚠️ Falling back to JSON file storage');
+      process.env.DATABASE_URL = ''; // Disable database mode
+      loadLeaderboard();
+    }
+  } else {
+    console.log('📁 Using JSON file storage');
+    await loadLeaderboard();
+    console.log('Leaderboard loaded!');
+    
+    // Auto-save every 5 minutes as extra safety (only for JSON mode)
+    setInterval(async () => {
+      await saveLeaderboard();
+      console.log('✅ Auto-save completed');
+    }, 5 * 60 * 1000); // 5 minutes
+  }
+  
+  console.log('🔐 Admin IDs configured:', ADMIN_IDS.length > 0 ? ADMIN_IDS : 'None (No admins set!)');
 });
 
-client.on("error", (error) => {
+client.on("error", async (error) => {
   console.error("❌ Bot error:", error);
   // Save on error
-  saveLeaderboard();
+  await saveLeaderboard();
 });
 
 // Graceful shutdown handlers
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   console.log('\n⚠️ Shutting down gracefully...');
-  saveLeaderboard();
+  await saveLeaderboard();
+  if (USE_DATABASE) {
+    await db.closeDatabase();
+  }
   console.log('✅ Leaderboard saved!');
   process.exit(0);
 });
 
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   console.log('\n⚠️ Shutting down gracefully...');
-  saveLeaderboard();
+  await saveLeaderboard();
+  if (USE_DATABASE) {
+    await db.closeDatabase();
+  }
   console.log('✅ Leaderboard saved!');
   process.exit(0);
 });
 
 // Handle uncaught errors
-process.on('uncaughtException', (error) => {
+process.on('uncaughtException', async (error) => {
   console.error('❌ Uncaught Exception:', error);
-  saveLeaderboard();
+  await saveLeaderboard();
+  if (USE_DATABASE) {
+    await db.closeDatabase();
+  }
   console.log('✅ Emergency save completed!');
   process.exit(1);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', async (reason, promise) => {
   console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-  saveLeaderboard();
+  await saveLeaderboard();
+  if (USE_DATABASE) {
+    await db.closeDatabase();
+  }
   console.log('✅ Emergency save completed!');
 });
 
