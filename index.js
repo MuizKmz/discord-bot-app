@@ -985,6 +985,7 @@ client.on("messageCreate", async (message) => {
     const board = renderBoard(false);
     
     message.reply(`${feedback}\n\n${board}`);
+  }
   } catch (error) {
     // Log error but don't crash
     console.error('❌ Error handling message:', error);
