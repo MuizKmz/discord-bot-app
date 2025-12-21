@@ -324,7 +324,15 @@ function formatUpcomingWord(word) {
 // ===== Pembantu: dapatkan makna perkataan dari API =====
 async function getWordMeaning(word) {
   try {
-    // Try Kateglo API (Malay/Indonesian dictionary)
+    // 1. Check database first (admin-added meanings)
+    if (USE_DATABASE) {
+      const dbMeaning = await db.getWordMeaningFromDB(word);
+      if (dbMeaning) {
+        return dbMeaning;
+      }
+    }
+    
+    // 2. Try Kateglo API (Malay/Indonesian dictionary)
     const response = await fetch(`http://kateglo.com/api.php?format=json&phrase=${encodeURIComponent(word)}`);
     
     if (!response.ok) {
@@ -342,7 +350,7 @@ async function getWordMeaning(word) {
       return meanings || 'Perkataan tradisional Melayu';
     }
     
-    // Fallback message
+    // 3. Fallback message
     return 'Perkataan tradisional Melayu';
   } catch (error) {
     console.error('❌ Error fetching word meaning:', error);
@@ -848,7 +856,10 @@ client.on("messageCreate", async (message) => {
       `\`!deleteword <perkataan>\` - Padam perkataan\n\n` +
       `**🔍 Cari Perkataan**\n` +
       `\`!searchword <kata>\` - Cari perkataan mengandungi kata\n\n` +
-      `**📊 Statistik**\n` +
+      `**� Urus Makna Perkataan**\n` +
+      `\`!setmeaning <perkataan> <makna>\` - Tetapkan makna perkataan\n` +
+      `\`!deletemeaning <perkataan>\` - Padam makna perkataan\n\n` +
+      `**�📊 Statistik**\n` +
       `\`!wordstats\` - Papar statistik perkataan\n\n` +
       `${decorativeLine}`;
     
@@ -865,6 +876,11 @@ client.on("messageCreate", async (message) => {
     
     const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(12);
     const totalWords = ORIGINAL_WORDS.length + EXCLUSIVE_WORDS.length;
+    let meaningsCount = 0;
+    
+    if (USE_DATABASE) {
+      meaningsCount = await db.getWordMeaningsCount();
+    }
     
     const statsText = `${decorativeLine}\n\n## 📊 Statistik Perkataan\n\n` +
       `**Total Perkataan:** ${totalWords}\n` +
@@ -873,9 +889,80 @@ client.on("messageCreate", async (message) => {
       `**Status Permainan:**\n` +
       `├─ Aktif: ${active ? 'Ya ✅' : 'Tidak ❌'}\n` +
       `└─ Perkataan Selesai: ${completedWords.length}\n\n` +
+      `**Makna Perkataan:**\n` +
+      `└─ 📖 Makna Tersimpan: ${meaningsCount}\n\n` +
       `${decorativeLine}`;
     
     message.channel.send(statsText);
+    return;
+  }
+
+  // Set word meaning command (Admin only)
+  if (content.startsWith("!setmeaning ") || content.startsWith("!setmakna ")) {
+    if (!isAdmin(message.author.id)) {
+      message.reply("❌ Arahan ini hanya untuk admin!");
+      return;
+    }
+    
+    if (!USE_DATABASE) {
+      message.reply("❌ Fungsi ini memerlukan database. Sila aktifkan DATABASE_URL.");
+      return;
+    }
+    
+    // Parse: !setmeaning <word> <meaning>
+    const parts = message.content.split(' ');
+    if (parts.length < 3) {
+      message.reply("❌ Format: `!setmeaning <perkataan> <makna>`\nContoh: `!setmeaning keris Senjata tajam tradisional Melayu dengan bilah berliku`");
+      return;
+    }
+    
+    const word = parts[1].toLowerCase().trim();
+    const meaning = parts.slice(2).join(' ').trim();
+    
+    // Check if word exists in dictionary
+    const allWords = [...ORIGINAL_WORDS, ...EXCLUSIVE_WORDS];
+    if (!allWords.includes(word)) {
+      message.reply(`⚠️ Perkataan **${word}** tidak wujud dalam kamus bot.\n-# Anda masih boleh tambah makna, tapi perkataan ini tidak ada dalam permainan.`);
+    }
+    
+    // Save to database
+    const success = await db.setWordMeaningInDB(word, meaning, message.author.id);
+    
+    if (success) {
+      const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(12);
+      message.reply(`${decorativeLine}\n\n✅ **Makna berjaya disimpan!**\n\n**Perkataan:** ${word}\n**Makna:** ${meaning}\n\n-# Makna ini akan dipaparkan dalam permainan.\n\n${decorativeLine}`);
+    } else {
+      message.reply("❌ Gagal menyimpan makna. Sila cuba lagi.");
+    }
+    return;
+  }
+
+  // Delete word meaning command (Admin only)
+  if (content.startsWith("!deletemeaning ") || content.startsWith("!deletemakna ")) {
+    if (!isAdmin(message.author.id)) {
+      message.reply("❌ Arahan ini hanya untuk admin!");
+      return;
+    }
+    
+    if (!USE_DATABASE) {
+      message.reply("❌ Fungsi ini memerlukan database.");
+      return;
+    }
+    
+    const word = message.content.split(' ')[1]?.toLowerCase().trim();
+    
+    if (!word) {
+      message.reply("❌ Format: `!deletemeaning <perkataan>`");
+      return;
+    }
+    
+    const success = await db.deleteWordMeaningFromDB(word);
+    
+    if (success) {
+      message.reply(`✅ Makna untuk perkataan **${word}** berjaya dipadam.`);
+    } else {
+      message.reply(`❌ Perkataan **${word}** tidak mempunyai makna tersimpan.`);
+    }
     return;
   }
 

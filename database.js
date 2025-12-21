@@ -26,6 +26,17 @@ async function initDatabase() {
       )
     `);
     
+    // Create word meanings table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS word_meanings (
+        word VARCHAR(255) PRIMARY KEY,
+        meaning TEXT NOT NULL,
+        added_by VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
     console.log('✅ Database tables initialized');
   } catch (error) {
     console.error('❌ Error initializing database:', error);
@@ -210,6 +221,89 @@ async function closeDatabase() {
   console.log('✅ Database connection closed');
 }
 
+// ===== WORD MEANINGS FUNCTIONS =====
+
+// Get word meaning from database
+async function getWordMeaningFromDB(word) {
+  const client = await pool.connect();
+  
+  try {
+    const result = await client.query(
+      'SELECT meaning FROM word_meanings WHERE LOWER(word) = LOWER($1)',
+      [word]
+    );
+    
+    if (result.rows.length > 0) {
+      return result.rows[0].meaning;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('❌ Error getting word meaning from database:', error);
+    return null;
+  } finally {
+    client.release();
+  }
+}
+
+// Set word meaning in database
+async function setWordMeaningInDB(word, meaning, addedBy) {
+  const client = await pool.connect();
+  
+  try {
+    await client.query(`
+      INSERT INTO word_meanings (word, meaning, added_by, updated_at)
+      VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+      ON CONFLICT (word)
+      DO UPDATE SET
+        meaning = EXCLUDED.meaning,
+        added_by = EXCLUDED.added_by,
+        updated_at = CURRENT_TIMESTAMP
+    `, [word.toLowerCase(), meaning, addedBy]);
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Error setting word meaning in database:', error);
+    return false;
+  } finally {
+    client.release();
+  }
+}
+
+// Delete word meaning from database
+async function deleteWordMeaningFromDB(word) {
+  const client = await pool.connect();
+  
+  try {
+    const result = await client.query(
+      'DELETE FROM word_meanings WHERE LOWER(word) = LOWER($1)',
+      [word]
+    );
+    
+    return result.rowCount > 0;
+  } catch (error) {
+    console.error('❌ Error deleting word meaning from database:', error);
+    return false;
+  } finally {
+    client.release();
+  }
+}
+
+// Get all word meanings count
+async function getWordMeaningsCount() {
+  const client = await pool.connect();
+  
+  try {
+    const result = await client.query('SELECT COUNT(*) FROM word_meanings');
+    return parseInt(result.rows[0].count);
+  } catch (error) {
+    console.error('❌ Error getting word meanings count:', error);
+    return 0;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   initDatabase,
   loadLeaderboardFromDB,
@@ -218,5 +312,9 @@ module.exports = {
   getTopPlayersFromDB,
   resetLeaderboardDB,
   migrateJSONToDatabase,
-  closeDatabase
+  closeDatabase,
+  getWordMeaningFromDB,
+  setWordMeaningInDB,
+  deleteWordMeaningFromDB,
+  getWordMeaningsCount
 };
