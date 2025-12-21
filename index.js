@@ -13,8 +13,19 @@ const client = new Client({
 });
 
 // ===== LEADERBOARD SYSTEM =====
+// NOTE: This uses JSON file storage for simplicity.
+// To migrate to a database (MongoDB, PostgreSQL, etc.), replace these functions:
+// - loadLeaderboard() -> fetch from database
+// - saveLeaderboard() -> save to database
+// - Keep the same leaderboard object structure for easy migration
 const LEADERBOARD_FILE = path.join(__dirname, 'leaderboard.json');
+const BACKUP_DIR = path.join(__dirname, 'backups');
 let leaderboard = {};
+
+// Create backup directory if it doesn't exist
+if (!fs.existsSync(BACKUP_DIR)) {
+  fs.mkdirSync(BACKUP_DIR, { recursive: true });
+}
 
 // Load leaderboard from file
 function loadLeaderboard() {
@@ -22,19 +33,83 @@ function loadLeaderboard() {
     if (fs.existsSync(LEADERBOARD_FILE)) {
       const data = fs.readFileSync(LEADERBOARD_FILE, 'utf8');
       leaderboard = JSON.parse(data);
+      console.log(`✅ Leaderboard loaded: ${Object.keys(leaderboard).length} users`);
+    } else {
+      console.log('⚠️ No leaderboard file found, starting fresh');
     }
   } catch (error) {
-    console.error('Error loading leaderboard:', error);
+    console.error('❌ Error loading leaderboard:', error);
+    // Try to load from latest backup
+    tryLoadFromBackup();
+  }
+}
+
+// Try to load from latest backup
+function tryLoadFromBackup() {
+  try {
+    const backups = fs.readdirSync(BACKUP_DIR)
+      .filter(f => f.startsWith('leaderboard_backup_'))
+      .sort()
+      .reverse();
+    
+    if (backups.length > 0) {
+      const latestBackup = path.join(BACKUP_DIR, backups[0]);
+      const data = fs.readFileSync(latestBackup, 'utf8');
+      leaderboard = JSON.parse(data);
+      console.log(`✅ Recovered from backup: ${backups[0]}`);
+      // Save to main file
+      fs.writeFileSync(LEADERBOARD_FILE, JSON.stringify(leaderboard, null, 2));
+    } else {
+      leaderboard = {};
+      console.log('⚠️ No backups found, starting fresh');
+    }
+  } catch (error) {
+    console.error('❌ Error loading backup:', error);
     leaderboard = {};
   }
 }
 
-// Save leaderboard to file
+// Save leaderboard to file with backup
 function saveLeaderboard() {
   try {
+    // Save main file
     fs.writeFileSync(LEADERBOARD_FILE, JSON.stringify(leaderboard, null, 2));
+    
+    // Create timestamped backup every save (auto-cleanup old backups)
+    createBackup();
   } catch (error) {
-    console.error('Error saving leaderboard:', error);
+    console.error('❌ Error saving leaderboard:', error);
+  }
+}
+
+// Create backup with timestamp
+function createBackup() {
+  try {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupFile = path.join(BACKUP_DIR, `leaderboard_backup_${timestamp}.json`);
+    fs.writeFileSync(backupFile, JSON.stringify(leaderboard, null, 2));
+    
+    // Keep only last 20 backups
+    cleanOldBackups(20);
+  } catch (error) {
+    console.error('❌ Error creating backup:', error);
+  }
+}
+
+// Clean old backups, keep only the latest N
+function cleanOldBackups(keepCount = 20) {
+  try {
+    const backups = fs.readdirSync(BACKUP_DIR)
+      .filter(f => f.startsWith('leaderboard_backup_'))
+      .sort()
+      .reverse();
+    
+    // Delete old backups
+    backups.slice(keepCount).forEach(file => {
+      fs.unlinkSync(path.join(BACKUP_DIR, file));
+    });
+  } catch (error) {
+    console.error('❌ Error cleaning backups:', error);
   }
 }
 
@@ -87,25 +162,38 @@ const ADMIN_IDS = process.env.ADMIN_IDS
 
 // ===== SENARAI PERKATAAN =====
 const ORIGINAL_WORDS = [
-  "adinda", "kakanda", "beta", "patik", "hamba", "tuanku", "seri", "duli",
-  "pusaka", "istana", "balairung", "permaisuri", "maharaja", "hulubalang",
-  "bentara", "laksamana", "panglima", "syahbandar", "biduanda", "gamelan",
-  "wayang", "hikayat", "gurindam", "pantun", "seloka", "jampi", "mantera",
-  "pawang", "tokoh", "tamadun", "cendera", "permata", "ratna", "mustika",
-  "cindai", "sutera", "langgam", "irama", "balada", "syair", "madah",
-  "warkah", "surat", "kitab", "naskhah", "tinta", "pena", "kalam", "takhta",
-  "singgahsana", "mahkota", "geliga", "keris", "tombak", "lembing", "pedang",
-  "perisai", "tameng", "panji", "bendera", "gading", "cogan", "cokmar",
-  "cogankata", "balai", "dewan", "balairongseri", "balainobat", "nobat",
-  "genderang", "nafiri", "serunai", "gong", "kenong", "bonang", "angklung",
-  "rebab", "sitar", "gambus", "kompang", "hadrah", "marwas", "serampang",
-  "joget", "zapin", "inang", "makyong", "menora", "wayangkul",
-  "titah", "tatkala", "seantero", "santapan", "mahligai", "wasilah",
-  "rebana", "kerongsang", "tempayan", "serambi", "belukar", "perigi",
-  "lesung", "serunding", "lemang", "dodol", "muafakat", "tatasusila",
-  "maruah", "beranda", "halaman", "dangau", "bendul", "alu",
-  "nyiru", "tempurung", "belanga", "kendi", "tampi", "kukusan",
-  "musyawarah", "gerimis", "sepoi"
+  "abur", "adinda", "afwah", "alu", "angklung", "arif", "arkian",
+  "bahana", "balada", "balai", "balainobat", "balairongseri", "balairung",
+  "balian", "baligh", "belanga", "belasungkawa", "belukar", "bendera",
+  "bendul", "bentara", "beradu", "berahi", "beranda", "beta",
+  "bidadari", "biduanda", "bonang", "bungkam",
+  "cacau", "cakerawala", "candawara", "cendana", "cendera", "ceritera",
+  "cindai", "citra", "cogan", "cogankata", "cokmar",
+  "daif", "dangau", "daulat", "dayang", "dek", "dewan", "dian", "dodol", "duli",
+  "fajar", "fiil", "firasat",
+  "gading", "gambus", "gamelan", "gamit", "gejala", "geliga", "genderang",
+  "gerimis", "gering", "geruh", "gong", "goyah", "gundah", "gundik", "gurindam",
+  "hadrah", "halaman", "halilintar", "hamba", "hikayat", "hulubalang",
+  "inang", "inderaloka", "irama", "istana",
+  "jambiah", "jampi", "jauhari", "jentayu", "joget", "jong", "jongkong", "jua", "juragan",
+  "kabut", "kadam", "kakanda", "kalam", "kandil", "kekang", "kemilau",
+  "kendi", "kenong", "keris", "kerongsang", "kesumat", "khilaf", "kirana", "kitab", "kompang", "kukusan",
+  "laksamana", "lali", "langgam", "lara", "lasykar", "lemang", "lembing", "lesung", "luluk",
+  "maakul", "mabur", "madah", "maharaja", "mahkota", "mahligai",
+  "makam", "makyong", "mamang", "mangkat", "manikam", "mantera",
+  "maruah", "marwas", "maslahat", "masyghul",
+  "menora", "meta", "muafakat", "mustika", "musyawarah",
+  "nafiri", "naskhah", "nirmala", "nista", "nobat", "nyiru",
+  "pancawarna", "panglima", "panji", "pantun", "patik",
+  "pawana", "pawang", "payang", "pedang", "pena", "perawis", "perigi", "perisai", "permaisuri", "permata", "pusaka",
+  "ratna", "rebab", "rebana",
+  "sali", "santapan", "seantero", "segara", "seloka", "sepoi", "serambi", "serampang", "seri",
+  "serunai", "serunding", "singgahsana", "sitar", "surat", "sutera",
+  "syahbandar", "syair",
+  "takhta", "tamadun", "tameng", "tampi", "tatasusila", "tatkala",
+  "tempayan", "tempurung", "tinta", "titah", "tokoh", "tombak", "tuanku", "tuarang",
+  "warkah", "wasilah", "wayang", "wayangkul",
+  "zapin"
 ]; 
 
 // ===== PERKATAAN EKSKLUSIF =====
@@ -338,19 +426,21 @@ function formatWordList(words, title, isExclusive = false) {
 
 // ===== MULA PERMAINAN =====
 client.on("messageCreate", async (message) => {
-  if (message.author.bot) return;
+  // Wrap everything in try-catch to prevent crashes
+  try {
+    if (message.author.bot) return;
 
-  // Semak jika sekatan pelayan diaktifkan dan jika mesej dari pelayan yang dibenarkan
-  if (ALLOWED_SERVERS.length > 0 && !ALLOWED_SERVERS.includes(message.guild?.id)) {
-    return; // Abaikan mesej dari pelayan tidak dibenarkan
-  }
+    // Semak jika sekatan pelayan diaktifkan dan jika mesej dari pelayan yang dibenarkan
+    if (ALLOWED_SERVERS.length > 0 && !ALLOWED_SERVERS.includes(message.guild?.id)) {
+      return; // Abaikan mesej dari pelayan tidak dibenarkan
+    }
 
-  // Semak jika sekatan saluran diaktifkan dan jika mesej dari saluran yang dibenarkan
-  if (ALLOWED_CHANNELS.length > 0 && !ALLOWED_CHANNELS.includes(message.channel.id)) {
-    return; // Abaikan mesej dari saluran tidak dibenarkan
-  }
+    // Semak jika sekatan saluran diaktifkan dan jika mesej dari saluran yang dibenarkan
+    if (ALLOWED_CHANNELS.length > 0 && !ALLOWED_CHANNELS.includes(message.channel.id)) {
+      return; // Abaikan mesej dari saluran tidak dibenarkan
+    }
 
-  const content = message.content.toLowerCase();
+    const content = message.content.toLowerCase();
 
   // Tips command - Show all available commands (Admin only)
   if (content === "!tips" || content === "!help" || content === "!commands") {
@@ -726,10 +816,7 @@ client.on("messageCreate", async (message) => {
       return;
     }
 
-    // Reset papan skor untuk permainan baru
-    resetLeaderboard();
-
-    // Gabungkan semua perkataan (88 + 8 = 96 perkataan)
+    // Gabungkan semua perkataan
     const allWords = [...ORIGINAL_WORDS, ...EXCLUSIVE_WORDS];
     WORDS = shuffleArray(allWords); // Kocok semua perkataan
     
@@ -786,7 +873,8 @@ client.on("messageCreate", async (message) => {
         
         if (currentWordIndex >= WORDS.length) {
           // Semua perkataan berjaya disiapkan - mula semula
-          message.channel.send("🎊 **Tahniah! Anda telah berjaya menyiapkan semua 96 perkataan!**\n\n-# Permainan akan bermula semula...");
+          const totalWords = ORIGINAL_WORDS.length + EXCLUSIVE_WORDS.length;
+          message.channel.send(`🎊 **Tahniah! Anda telah berjaya menyiapkan semua ${totalWords} perkataan!**\n\n-# Permainan akan bermula semula...`);
           
           setTimeout(() => {
             // Kocok semula dan mula dari awal dengan semua perkataan
@@ -861,7 +949,8 @@ client.on("messageCreate", async (message) => {
         
         if (currentWordIndex >= WORDS.length) {
           // Semua perkataan berjaya disiapkan - mula semula
-          message.channel.send("🎊 **Tahniah! Anda telah berjaya menyiapkan semua 96 perkataan!**\n\n-# Permainan akan bermula semula...");
+          const totalWords = ORIGINAL_WORDS.length + EXCLUSIVE_WORDS.length;
+          message.channel.send(`🎊 **Tahniah! Anda telah berjaya menyiapkan semua ${totalWords} perkataan!**\n\n-# Permainan akan bermula semula...`);
           
           setTimeout(() => {
             // Kocok semula dan mula dari awal dengan semua perkataan
@@ -896,18 +985,73 @@ client.on("messageCreate", async (message) => {
     const board = renderBoard(false);
     
     message.reply(`${feedback}\n\n${board}`);
+  } catch (error) {
+    // Log error but don't crash
+    console.error('❌ Error handling message:', error);
+    console.error('Error details:', {
+      content: message.content,
+      author: message.author.tag,
+      channel: message.channel.id
+    });
+    
+    // Save leaderboard immediately on error
+    saveLeaderboard();
+    
+    // Notify in channel (optional - comment out if too spammy)
+    try {
+      message.reply('❌ Maaf, terjadi ralat. Data telah disimpan. Cuba lagi!');
+    } catch (replyError) {
+      console.error('❌ Could not send error message:', replyError);
+    }
   }
 });
 
-client.once("ready", () => {
+client.once("clientReady", () => {
   console.log(`Bot logged in as ${client.user.tag}`);
   loadLeaderboard();
   console.log('Leaderboard loaded!');
   console.log('🔐 Admin IDs configured:', ADMIN_IDS.length > 0 ? ADMIN_IDS : 'None (No admins set!)');
+  
+  // Auto-save every 5 minutes as extra safety
+  setInterval(() => {
+    saveLeaderboard();
+    console.log('✅ Auto-save completed');
+  }, 5 * 60 * 1000); // 5 minutes
 });
 
 client.on("error", (error) => {
-  console.error("Bot error:", error);
+  console.error("❌ Bot error:", error);
+  // Save on error
+  saveLeaderboard();
+});
+
+// Graceful shutdown handlers
+process.on('SIGINT', () => {
+  console.log('\n⚠️ Shutting down gracefully...');
+  saveLeaderboard();
+  console.log('✅ Leaderboard saved!');
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('\n⚠️ Shutting down gracefully...');
+  saveLeaderboard();
+  console.log('✅ Leaderboard saved!');
+  process.exit(0);
+});
+
+// Handle uncaught errors
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  saveLeaderboard();
+  console.log('✅ Emergency save completed!');
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  saveLeaderboard();
+  console.log('✅ Emergency save completed!');
 });
 
 client.login(process.env.DISCORD_BOT_TOKEN);
