@@ -321,6 +321,35 @@ function formatUpcomingWord(word) {
   return result;
 }
 
+// ===== Pembantu: dapatkan makna perkataan dari API =====
+async function getWordMeaning(word) {
+  try {
+    // Try Kateglo API (Malay/Indonesian dictionary)
+    const response = await fetch(`http://kateglo.com/api.php?format=json&phrase=${encodeURIComponent(word)}`);
+    
+    if (!response.ok) {
+      throw new Error('API request failed');
+    }
+    
+    const data = await response.json();
+    
+    // Check if word found
+    if (data.kateglo && data.kateglo.definition) {
+      const definitions = data.kateglo.definition;
+      
+      // Get first 2 definitions
+      const meanings = definitions.slice(0, 2).map(def => def.def_text).join('; ');
+      return meanings || 'Perkataan tradisional Melayu';
+    }
+    
+    // Fallback message
+    return 'Perkataan tradisional Melayu';
+  } catch (error) {
+    console.error('❌ Error fetching word meaning:', error);
+    return 'Perkataan tradisional Melayu';
+  }
+}
+
 // ===== Pembantu: papar papan penuh =====
 function renderBoard(showHeader = false, isNextWord = false) {
   let output = "";
@@ -505,6 +534,9 @@ client.on("messageCreate", async (message) => {
     
     tipsText += `\`!skor\` atau \`!leaderboard\` - Papar papan skor teratas\n`;
     tipsText += `-# Lihat siapa pemain terbaik!\n\n`;
+    
+    tipsText += `\`!makna <perkataan>\` - Lihat makna perkataan\n`;
+    tipsText += `-# Contoh: \`!makna istana\`\n\n`;
     
     tipsText += `\`!resetteka\` atau \`!henti\` - Hentikan permainan semasa\n`;
     tipsText += `-# Papan skor akan direset\n\n`;
@@ -847,6 +879,43 @@ client.on("messageCreate", async (message) => {
     return;
   }
 
+  // Look up word meaning command
+  if (content.startsWith("!makna ")) {
+    const word = message.content.split(' ')[1]?.toLowerCase().trim();
+    
+    if (!word) {
+      message.reply("❌ Format: `!makna <perkataan>`\nContoh: `!makna istana`");
+      return;
+    }
+    
+    // Check if word exists in our dictionary
+    const allWords = [...ORIGINAL_WORDS, ...EXCLUSIVE_WORDS];
+    const wordExists = allWords.includes(word);
+    
+    if (!wordExists) {
+      message.reply(`❌ Perkataan **${word}** tidak dijumpai dalam kamus bot.\n-# Gunakan \`!listwords\` untuk lihat semua perkataan.`);
+      return;
+    }
+    
+    // Show typing indicator
+    await message.channel.sendTyping();
+    
+    // Fetch meaning
+    const meaning = await getWordMeaning(word);
+    
+    const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(12);
+    const isExclusive = EXCLUSIVE_WORDS.includes(word);
+    const diamond = isExclusive ? '<a:SAC_diamond1:893046074888040499>' : '<a:SAC_diamond2:893045927009472542>';
+    
+    const meaningText = `${decorativeLine}\n\n## 📖 Makna Perkataan ${diamond}\n\n` +
+      `**${word.toUpperCase()}**\n\n` +
+      `${meaning}\n\n` +
+      `${decorativeLine}`;
+    
+    message.channel.send(meaningText);
+    return;
+  }
+
   // Mula permainan (Admin only)
   if (content === "!teka") {
     if (!isAdmin(message.author.id)) {
@@ -898,12 +967,15 @@ client.on("messageCreate", async (message) => {
       // Berikan mata untuk meneka perkataan penuh
       addPoints(message.author.id, message.author.username, 1, currentWord);
       
+      // Get word meaning from API
+      const meaning = await getWordMeaning(currentWord);
+      
       const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(12);
       // Gunakan diamond eksklusif jika perkataan dalam senarai eksklusif
       const diamondEmoji = EXCLUSIVE_WORDS.includes(currentWord) 
         ? '<a:SAC_diamond1:893046074888040499>' 
         : '<a:SAC_diamond2:893045927009472542>';
-      const congratsMessage = `${decorativeLine}\n\n-# *Arahan - Taip huruf atau perkataan untuk diteka*\n\nPerkataan: ${formatCompletedWord(currentWord)} ${diamondEmoji}\n\n<a:SAC_aaparty2:878675028282052708> Tahniah <@${message.author.id}> berjaya meneka! Perkataan itu ialah **${currentWord}**`;
+      const congratsMessage = `${decorativeLine}\n\n-# *Arahan - Taip huruf atau perkataan untuk diteka*\n\nPerkataan: ${formatCompletedWord(currentWord)} ${diamondEmoji}\n\n<a:SAC_aaparty2:878675028282052708> Tahniah <@${message.author.id}> berjaya meneka! Perkataan itu ialah **${currentWord}**\n\n📖 **Makna:** ${meaning}`;
       
       message.channel.send(congratsMessage);
       
@@ -978,8 +1050,11 @@ client.on("messageCreate", async (message) => {
       // Berikan mata untuk menyiapkan perkataan
       addPoints(message.author.id, message.author.username, 1, currentWord);
       
+      // Get word meaning from API
+      const meaning = await getWordMeaning(currentWord);
+      
       const board = renderBoard(false);
-      const congratsMessage = `<a:SAC_aaparty2:878675028282052708> Tahniah <@${message.author.id}> berjaya menyiapkan perkataan **${currentWord}**!`;
+      const congratsMessage = `<a:SAC_aaparty2:878675028282052708> Tahniah <@${message.author.id}> berjaya menyiapkan perkataan **${currentWord}**!\n\n📖 **Makna:** ${meaning}`;
       
       message.channel.send(`${board}\n\n${congratsMessage}`);
       
