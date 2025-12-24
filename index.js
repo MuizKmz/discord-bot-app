@@ -791,7 +791,10 @@ client.on("messageCreate", async (message) => {
     tipsText += `-# Taip huruf atau perkataan penuh untuk meneka\n\n`;
     
     tipsText += `\`!skor\` atau \`!leaderboard\` - Papar papan skor teratas\n`;
-    tipsText += `-# Lihat siapa pemain terbaik!\n\n`;
+    tipsText += `-# Lihat 10 pemain teratas\n\n`;
+    
+    tipsText += `\`!skorall\` atau \`!leaderboardall\` - Papar semua pemain\n`;
+    tipsText += `-# Dengan navigasi halaman untuk semua pemain\n\n`;
     
     tipsText += `\`!makna <perkataan>\` - Lihat makna perkataan\n`;
     tipsText += `-# Contoh: \`!makna istana\`\n\n`;
@@ -864,6 +867,118 @@ client.on("messageCreate", async (message) => {
     leaderboardText += `${decorativeLine}`;
     
     message.channel.send(leaderboardText);
+    return;
+  }
+
+  // Arahan papan skor lengkap dengan pagination
+  if (content === "!skorall" || content === "!leaderboardall") {
+    const allPlayers = getTopPlayers(1000); // Get all players
+    
+    if (allPlayers.length === 0) {
+      message.channel.send("Tiada data papan skor lagi. Mula bermain untuk mendapat mata!");
+      return;
+    }
+    
+    const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(12);
+    const playersPerPage = 10;
+    const totalPages = Math.ceil(allPlayers.length / playersPerPage);
+    
+    let currentPage = 0;
+    
+    // Function to generate page content
+    const generatePage = (pageIndex) => {
+      const startIdx = pageIndex * playersPerPage;
+      const endIdx = Math.min(startIdx + playersPerPage, allPlayers.length);
+      const pagePlayers = allPlayers.slice(startIdx, endIdx);
+      
+      let pageContent = `${decorativeLine}\n\n`;
+      pageContent += `## <a:BlueStar_SAC:886125020286451752> Papan Skor Lengkap`;
+      
+      if (totalPages > 1) {
+        pageContent += ` - 📄 Halaman ${pageIndex + 1}/${totalPages}`;
+      }
+      
+      pageContent += `\n\n-# Total Pemain: **${allPlayers.length}** | Paparan: ${startIdx + 1}-${endIdx}\n\n`;
+      
+      pagePlayers.forEach((player, index) => {
+        const actualRank = startIdx + index + 1;
+        const medal = actualRank === 1 ? '🥇' : actualRank === 2 ? '🥈' : actualRank === 3 ? '🥉' : `${actualRank}.`;
+        pageContent += `${medal} **${player.username}** - **${player.points}** mata\n\n`;
+      });
+      
+      pageContent += `${decorativeLine}`;
+      return pageContent;
+    };
+    
+    // Create navigation buttons if needed
+    if (totalPages > 1) {
+      const createButtons = (pageIndex) => {
+        const row = new ActionRowBuilder()
+          .addComponents(
+            new ButtonBuilder()
+              .setCustomId('prev_skor')
+              .setLabel('◀️ Sebelum')
+              .setStyle(ButtonStyle.Primary)
+              .setDisabled(pageIndex === 0),
+            new ButtonBuilder()
+              .setCustomId('next_skor')
+              .setLabel('Seterus ▶️')
+              .setStyle(ButtonStyle.Primary)
+              .setDisabled(pageIndex === totalPages - 1),
+            new ButtonBuilder()
+              .setCustomId('close_skor')
+              .setLabel('❌ Tutup')
+              .setStyle(ButtonStyle.Danger)
+          );
+        return row;
+      };
+      
+      // Send initial page with buttons
+      const sentMessage = await message.channel.send({
+        content: generatePage(currentPage),
+        components: [createButtons(currentPage)]
+      });
+      
+      // Create button collector
+      const collector = sentMessage.createMessageComponentCollector({
+        filter: i => i.user.id === message.author.id,
+        time: 300000 // 5 minutes
+      });
+      
+      collector.on('collect', async interaction => {
+        if (interaction.customId === 'prev_skor' && currentPage > 0) {
+          currentPage--;
+        } else if (interaction.customId === 'next_skor' && currentPage < totalPages - 1) {
+          currentPage++;
+        } else if (interaction.customId === 'close_skor') {
+          await interaction.update({
+            content: generatePage(currentPage),
+            components: [] // Remove buttons
+          });
+          collector.stop();
+          return;
+        }
+        
+        await interaction.update({
+          content: generatePage(currentPage),
+          components: [createButtons(currentPage)]
+        });
+      });
+      
+      collector.on('end', async () => {
+        try {
+          await sentMessage.edit({
+            components: [] // Remove buttons after timeout
+          });
+        } catch (error) {
+          // Message might be deleted, ignore error
+        }
+      });
+    } else {
+      // Single page, no buttons needed
+      message.channel.send(generatePage(0));
+    }
+    
     return;
   }
 
