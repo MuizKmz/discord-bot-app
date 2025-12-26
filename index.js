@@ -1080,14 +1080,14 @@ client.on("messageCreate", async (message) => {
     return;
   }
 
-  // If teka-no game is active and user types letters, redirect to teka-huruf
-  if (gameTekaNo.getGameStatus().active && /^[a-zA-Z]+$/.test(content)) {
+  // If teka-no game is active and user types a single letter, redirect to teka-huruf
+  if (gameTekaNo.getGameStatus().active && /^[a-zA-Z]$/.test(content)) {
     message.reply("<:1SAC_ClairMarah:1092507527389913088> **Ni teka nombor lah, kalau nak teka perkataan pergi sini** <#1451233703102513154>");
     return;
   }
 
-  // If teka-no game is active and user is chatting (not numbers/single letters), redirect to chat channel
-  if (gameTekaNo.getGameStatus().active && content.length > 1 && !/^\d+$/.test(content) && !content.startsWith('!')) {
+  // If teka-no game is active and user types multiple letters/words, redirect to chat channel
+  if (gameTekaNo.getGameStatus().active && /^[a-zA-Z]{2,}$/.test(content)) {
     message.reply("<a:SAC_kirby:1169136576056524850> **Hoi ! Sini bukan tempat borak, pergi <#854967270063996939> sana! Sini tempat teka nombor lah.**");
     return;
   }
