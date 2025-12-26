@@ -85,8 +85,6 @@ function startGame(message, min = 1, max = 100000000) {
   
   let output = `${decorativeLine}\n\n`;
   output += `## ${diamond} __**Game Teka Nombor**__\n\n`;
-  output += `🎯 **Nombor telah dijana!**\n\n`;
-  output += `📊 **Range:** ${min.toLocaleString()} - ${max.toLocaleString()}\n\n`;
   output += `-# Taip nombor untuk meneka (contoh: 5000000)\n`;
   output += `-# Atau taip !henti-no untuk hentikan permainan\n\n`;
   output += `${decorativeLine}`;
@@ -134,7 +132,7 @@ function guessNumber(guess, message, db = null, USE_DATABASE = false, addPoints 
     
     // Award points for NUMBER GAME (gameType = 'no')
     if (addPoints) {
-      addPoints(message.author.id, message.author.username, 5, `teka-no-${secretNumber}`, 'no');
+      addPoints(message.author.id, message.author.username, 1, `teka-no-${secretNumber}`, 'no');
     }
     
     let output = `${decorativeLine}\n\n`;
@@ -144,7 +142,7 @@ function guessNumber(guess, message, db = null, USE_DATABASE = false, addPoints 
     output += `📊 **Statistik:**\n`;
     output += `├─ Percubaan: **${attempts}** kali\n`;
     output += `├─ Pemenang: <@${message.author.id}>\n`;
-    output += `└─ Mata: **+5 mata** 🏆\n\n`;
+    output += `└─ Mata: **+1 mata** 🏆\n\n`;
     output += `*Sila ambil gula-gula ni 🍬 dan duduk.*\n\n`;
     output += `${decorativeLine}`;
     
@@ -188,8 +186,7 @@ function guessNumber(guess, message, db = null, USE_DATABASE = false, addPoints 
   let output = `${decorativeLine}\n\n`;
   output += `${response}\n\n`;
   output += `${emoji} **Tekaan:** ${guessNum.toLocaleString()}\n`;
-  output += `📊 **Beza:** ${difference.toLocaleString()}\n`;
-  output += `🔢 **Percubaan:** ${attempts}\n\n`;
+  output += `-# 🔢 **Percubaan:** ${attempts}\n\n`;
   output += `${decorativeLine}`;
 
   return {
