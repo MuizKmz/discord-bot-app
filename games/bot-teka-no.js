@@ -153,14 +153,11 @@ function guessNumber(guess, message, db = null, USE_DATABASE = false, addPoints 
     console.log(`🎮 New round! Secret number: ${secretNumber}`);
     
     let output = `${decorativeLine}\n\n`;
-    output += `<a:SAC_zzBunnywow:919772019099312190> **BETUL, ANAK MURID!**\n`;
-    output += `***Cikgu bangga dengan awak*** <a:SAC_aaparty2:878675028282052708>\n\n`;
-    output += `**Jawapan yang betul ialah ${oldNumber.toLocaleString()}**\n\n`;
-    output += `<a:BongoCat:938259209185812480> **Statistik:**\n`;
-    output += `├─ Percubaan: **${oldAttempts}** kali\n`;
-    output += `├─ Pemenang: <@${message.author.id}>\n`;
-    output += `└─ Mata: **+1 mata**\n\n`;
-    output += `*Sila ambil bintang ni <a:YellowStar_SAC:1036618688834576384> dan duduk.*\n\n`;
+    output += `<a:SAC_diamond1:893046074888040499> **TAHNIAH ! (<@${message.author.id}>)**\n`;
+    output += `***Cikgu bangga dengan awak***<a:SAC_pandaboo:886879857500373063>\n`;
+    output += `*Sila ambil bintang ni <a:YellowStar_SAC:1036618688834576384> dan duduk*\n\n`;
+    output += `<a:TickPurple_SAC:1083764226826453052> **Jawapan Tepat: ${oldNumber.toLocaleString()}**\n`;
+    output += `- Percubaan: **${oldAttempts}** kali\n\n`;
     output += `${decorativeLine}\n\n`;
     
     // Next round message
