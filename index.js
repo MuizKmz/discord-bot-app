@@ -141,21 +141,31 @@ function cleanOldBackups(keepCount = 20) {
   }
 }
 
-// Add points to user
-async function addPoints(userId, username, points, word) {
+// Add points to user with game type
+async function addPoints(userId, username, points, word, gameType = 'huruf') {
   if (USE_DATABASE) {
-    // Update database directly
-    await db.updateUserPoints(userId, username, points, word);
+    // Update database directly with game type
+    await db.updateUserPoints(userId, username, points, word, gameType);
     // Also update in-memory copy for immediate access
     if (!leaderboard[userId]) {
       leaderboard[userId] = {
         username: username,
         points: 0,
+        points_huruf: 0,
+        points_no: 0,
         words: []
       };
     }
     leaderboard[userId].points += points;
     leaderboard[userId].username = username;
+    
+    // Update specific game points
+    if (gameType === 'huruf') {
+      leaderboard[userId].points_huruf = (leaderboard[userId].points_huruf || 0) + points;
+    } else if (gameType === 'no') {
+      leaderboard[userId].points_no = (leaderboard[userId].points_no || 0) + points;
+    }
+    
     if (word) {
       leaderboard[userId].words.push(word);
     }
@@ -165,11 +175,21 @@ async function addPoints(userId, username, points, word) {
       leaderboard[userId] = {
         username: username,
         points: 0,
+        points_huruf: 0,
+        points_no: 0,
         words: []
       };
     }
     leaderboard[userId].points += points;
-    leaderboard[userId].username = username; // Update username in case it changed
+    leaderboard[userId].username = username;
+    
+    // Update specific game points
+    if (gameType === 'huruf') {
+      leaderboard[userId].points_huruf = (leaderboard[userId].points_huruf || 0) + points;
+    } else if (gameType === 'no') {
+      leaderboard[userId].points_no = (leaderboard[userId].points_no || 0) + points;
+    }
+    
     if (word) {
       leaderboard[userId].words.push(word);
     }
@@ -330,6 +350,9 @@ client.on("messageCreate", async (message) => {
     tipsText += `### 🎮 Arahan Permainan\n\n`;
     tipsText += `\`!teka\` - Mula permainan teka perkataan baharu\n`;
     tipsText += `-# Taip huruf atau perkataan penuh untuk meneka\n\n`;
+    
+    tipsText += `\`!teka-no\` - Mula permainan teka nombor\n`;
+    tipsText += `-# Taip nombor untuk meneka jawapan\n\n`;
     
     tipsText += `\`!skor\` atau \`!leaderboard\` - Papar papan skor teratas\n`;
     tipsText += `-# Lihat 10 pemain teratas\n\n`;
@@ -935,6 +958,65 @@ client.on("messageCreate", async (message) => {
     message.channel.send(renderBoard(true));
     return;
   }
+
+  // ===== GAME TEKA NOMBOR COMMANDS =====
+  
+  // Start number guessing game
+  if (content === "!teka-no") {
+    if (!isAdmin(message.author.id)) {
+      message.reply("❌ Arahan ini hanya untuk admin!");
+      return;
+    }
+    
+    const result = gameTekaNo.startGame(message);
+    if (result.success) {
+      message.channel.send(result.message);
+    } else {
+      message.reply(result.message);
+    }
+    return;
+  }
+
+  // Stop number game
+  if (content === "!henti-no") {
+    if (!isAdmin(message.author.id)) {
+      message.reply("❌ Arahan ini hanya untuk admin!");
+      return;
+    }
+    
+    const result = gameTekaNo.stopGame(message.author.id);
+    if (result.success) {
+      message.channel.send(result.message);
+    } else {
+      message.reply(result.message);
+    }
+    return;
+  }
+
+  // Admin command - reveal answer
+  if (content === "!noapa") {
+    const result = gameTekaNo.revealAnswer(message.author.id, ADMIN_IDS);
+    if (result.success) {
+      // Send as ephemeral-style message (only admin sees)
+      message.author.send(result.message).catch(() => {
+        message.reply(result.message + "\n-# ⚠️ Mesej ini boleh dilihat semua orang. Aktifkan DM untuk privasi.");
+      });
+    } else {
+      message.reply(result.message);
+    }
+    return;
+  }
+
+  // Check if message is a number guess (only digits)
+  if (/^\d+$/.test(content) && gameTekaNo.getGameStatus().active) {
+    const result = gameTekaNo.guessNumber(content, message, db, USE_DATABASE, addPoints);
+    if (result.success && result.message) {
+      message.channel.send(result.message);
+    }
+    return;
+  }
+
+  // ===== GAME TEKA HURUF LOGIC =====
 
   if (!active) return;
 

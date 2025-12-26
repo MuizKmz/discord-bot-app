@@ -20,11 +20,31 @@ async function initDatabase() {
         user_id VARCHAR(255) PRIMARY KEY,
         username VARCHAR(255) NOT NULL,
         points INTEGER DEFAULT 0,
+        points_huruf INTEGER DEFAULT 0,
+        points_no INTEGER DEFAULT 0,
         words TEXT[] DEFAULT ARRAY[]::TEXT[],
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    
+    // Add new columns if they don't exist (for existing databases)
+    await client.query(`
+      ALTER TABLE leaderboard 
+      ADD COLUMN IF NOT EXISTS points_huruf INTEGER DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS points_no INTEGER DEFAULT 0
+    `).catch(() => {
+      // Columns might already exist, ignore error
+    });
+    
+    // Migrate existing points to points_huruf (all existing points are from word game)
+    await client.query(`
+      UPDATE leaderboard 
+      SET points_huruf = points 
+      WHERE points_huruf = 0 AND points > 0
+    `).catch(() => {
+      // Already migrated, ignore
+    });
     
     // Create word meanings table
     await client.query(`
@@ -58,6 +78,8 @@ async function loadLeaderboardFromDB() {
       leaderboard[row.user_id] = {
         username: row.username,
         points: row.points,
+        points_huruf: row.points_huruf || 0,
+        points_no: row.points_no || 0,
         words: row.words || []
       };
     });
@@ -81,15 +103,17 @@ async function saveLeaderboardToDB(leaderboard) {
     
     for (const [userId, data] of Object.entries(leaderboard)) {
       await client.query(`
-        INSERT INTO leaderboard (user_id, username, points, words, updated_at)
-        VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+        INSERT INTO leaderboard (user_id, username, points, points_huruf, points_no, words, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
         ON CONFLICT (user_id) 
         DO UPDATE SET 
           username = EXCLUDED.username,
           points = EXCLUDED.points,
+          points_huruf = EXCLUDED.points_huruf,
+          points_no = EXCLUDED.points_no,
           words = EXCLUDED.words,
           updated_at = CURRENT_TIMESTAMP
-      `, [userId, data.username, data.points, data.words]);
+      `, [userId, data.username, data.points, data.points_huruf || 0, data.points_no || 0, data.words]);
     }
     
     await client.query('COMMIT');
@@ -102,38 +126,59 @@ async function saveLeaderboardToDB(leaderboard) {
   }
 }
 
-// Add or update single user
-async function updateUserPoints(userId, username, points, word) {
+// Add or update single user with game type support
+async function updateUserPoints(userId, username, points, word, gameType = 'huruf') {
   const client = await pool.connect();
   
   try {
     // First, get current user data
     const result = await client.query(
-      'SELECT points, words FROM leaderboard WHERE user_id = $1',
+      'SELECT points, points_huruf, points_no, words FROM leaderboard WHERE user_id = $1',
       [userId]
     );
     
     let newPoints = points;
+    let newPointsHuruf = 0;
+    let newPointsNo = 0;
     let newWords = word ? [word] : [];
     
     if (result.rows.length > 0) {
-      // User exists, increment
+      // User exists, increment appropriate points
       newPoints = result.rows[0].points + points;
+      newPointsHuruf = result.rows[0].points_huruf || 0;
+      newPointsNo = result.rows[0].points_no || 0;
+      
+      // Add points to specific game type
+      if (gameType === 'huruf') {
+        newPointsHuruf += points;
+      } else if (gameType === 'no') {
+        newPointsNo += points;
+      }
+      
       newWords = [...(result.rows[0].words || [])];
       if (word) newWords.push(word);
+    } else {
+      // New user
+      if (gameType === 'huruf') {
+        newPointsHuruf = points;
+      } else if (gameType === 'no') {
+        newPointsNo = points;
+      }
     }
     
     // Upsert user
     await client.query(`
-      INSERT INTO leaderboard (user_id, username, points, words, updated_at)
-      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+      INSERT INTO leaderboard (user_id, username, points, points_huruf, points_no, words, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
       ON CONFLICT (user_id)
       DO UPDATE SET
         username = EXCLUDED.username,
         points = EXCLUDED.points,
+        points_huruf = EXCLUDED.points_huruf,
+        points_no = EXCLUDED.points_no,
         words = EXCLUDED.words,
         updated_at = CURRENT_TIMESTAMP
-    `, [userId, username, newPoints, newWords]);
+    `, [userId, username, newPoints, newPointsHuruf, newPointsNo, newWords]);
     
   } catch (error) {
     console.error('❌ Error updating user points:', error);
