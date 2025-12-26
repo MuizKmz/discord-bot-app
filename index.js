@@ -1088,7 +1088,7 @@ client.on("messageCreate", async (message) => {
 
   // If teka-no game is active and user is chatting (not numbers/single letters), redirect to chat channel
   if (gameTekaNo.getGameStatus().active && content.length > 1 && !/^\d+$/.test(content) && !content.startsWith('!')) {
-    message.reply("<a:SAC_kirby:1169136576056524850> **Oi, Sini bukan tempat borak, pergi <#854967270063996939> sana!**");
+    message.reply("<a:SAC_kirby:1169136576056524850> **Hoi ! Sini bukan tempat borak, pergi <#854967270063996939> sana! Sini tempat teka nombor lah.**");
     return;
   }
 
