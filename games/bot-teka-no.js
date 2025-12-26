@@ -173,10 +173,6 @@ function guessNumber(guess, message, db = null, USE_DATABASE = false, addPoints 
       continues: true
     };
   }
-      message: output,
-      won: true
-    };
-  }
 
   // NOT CORRECT - Give hints based on difference
   let response = "";
