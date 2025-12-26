@@ -355,7 +355,13 @@ client.on("messageCreate", async (message) => {
     tipsText += `-# Taip nombor untuk meneka jawapan\n\n`;
     
     tipsText += `\`!skor\` atau \`!leaderboard\` - Papar papan skor teratas\n`;
-    tipsText += `-# Lihat 10 pemain teratas\n\n`;
+    tipsText += `-# Lihat 10 pemain teratas (gabungan kedua-dua game)\n\n`;
+    
+    tipsText += `\`!skor-huruf\` - Papan skor Teka Huruf sahaja\n`;
+    tipsText += `-# Top 10 pemain game teka perkataan\n\n`;
+    
+    tipsText += `\`!skor-no\` - Papan skor Teka Nombor sahaja\n`;
+    tipsText += `-# Top 10 pemain game teka nombor\n\n`;
     
     tipsText += `\`!skorall\` atau \`!leaderboardall\` - Papar semua pemain\n`;
     tipsText += `-# Dengan navigasi halaman untuk semua pemain\n\n`;
@@ -425,7 +431,65 @@ client.on("messageCreate", async (message) => {
     
     topPlayers.forEach((player, index) => {
       const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
-      leaderboardText += `${medal} **${player.username}** - **${player.points}** mata\n\n`;
+      leaderboardText += `${medal} **${player.username}** - **${player.points}** mata\n`;
+      leaderboardText += `   ├─ 🔤 Huruf: ${player.points_huruf || 0} mata\n`;
+      leaderboardText += `   └─ 🔢 Nombor: ${player.points_no || 0} mata\n\n`;
+    });
+    
+    leaderboardText += `${decorativeLine}`;
+    
+    message.channel.send(leaderboardText);
+    return;
+  }
+
+  // Papan skor Huruf sahaja
+  if (content === "!skor-huruf" || content === "!leaderboard-huruf") {
+    const allPlayers = getTopPlayers(1000);
+    const sortedByHuruf = allPlayers
+      .filter(p => (p.points_huruf || 0) > 0)
+      .sort((a, b) => (b.points_huruf || 0) - (a.points_huruf || 0))
+      .slice(0, 10);
+    
+    if (sortedByHuruf.length === 0) {
+      message.channel.send("Tiada data papan skor untuk permainan Teka Huruf lagi!");
+      return;
+    }
+    
+    const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(12);
+    const diamond = '<a:SAC_diamond2:893045927009472542>';
+    let leaderboardText = `${decorativeLine}\n\n## ${diamond} Papan Skor Teka Huruf\n\n`;
+    
+    sortedByHuruf.forEach((player, index) => {
+      const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
+      leaderboardText += `${medal} **${player.username}** - **${player.points_huruf || 0}** mata\n\n`;
+    });
+    
+    leaderboardText += `${decorativeLine}`;
+    
+    message.channel.send(leaderboardText);
+    return;
+  }
+
+  // Papan skor Nombor sahaja
+  if (content === "!skor-no" || content === "!leaderboard-no") {
+    const allPlayers = getTopPlayers(1000);
+    const sortedByNo = allPlayers
+      .filter(p => (p.points_no || 0) > 0)
+      .sort((a, b) => (b.points_no || 0) - (a.points_no || 0))
+      .slice(0, 10);
+    
+    if (sortedByNo.length === 0) {
+      message.channel.send("Tiada data papan skor untuk permainan Teka Nombor lagi!");
+      return;
+    }
+    
+    const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(12);
+    const diamond = '<a:SAC_diamond1:893046074888040499>';
+    let leaderboardText = `${decorativeLine}\n\n## ${diamond} Papan Skor Teka Nombor\n\n`;
+    
+    sortedByNo.forEach((player, index) => {
+      const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
+      leaderboardText += `${medal} **${player.username}** - **${player.points_no || 0}** mata\n\n`;
     });
     
     leaderboardText += `${decorativeLine}`;
