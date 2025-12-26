@@ -1086,8 +1086,8 @@ client.on("messageCreate", async (message) => {
     return;
   }
 
-  // If teka-no game is active and user types multiple letters/words, redirect to chat channel
-  if (gameTekaNo.getGameStatus().active && /^[a-zA-Z]{2,}$/.test(content)) {
+  // If teka-no game is active and user types multiple letters/words (with or without spaces), redirect to chat channel
+  if (gameTekaNo.getGameStatus().active && /^[a-zA-Z\s]{2,}$/.test(content) && !content.startsWith('!')) {
     message.reply("<a:SAC_kirby:1169136576056524850> **Hoi ! Sini bukan tempat borak, pergi <#854967270063996939> sana! Sini tempat teka nombor lah.**");
     return;
   }

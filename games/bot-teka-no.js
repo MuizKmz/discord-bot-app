@@ -36,7 +36,7 @@ const RESPONSES = {
     "<a:Bang:885761781459468328> **Cikgu ajar tambah dan tolak, bukan roket sains.** *Turunkan roket tu sekarang~*"
   ],
   tooLowFar: [
-    "<a:FlameBlue_SAC:1083763847145459762> **Masih rendah** *Dah dekat, tapi masih bawah~*",
+    "<a:FlameBlue_SAC:1083763847145459762> **Masih rendah !!!** *Dah dekat, tapi masih bawah~*",
     "<a:BongoCat:938259209185812480> **Okay, Cikgu nampak usaha!** *Cuba naikkan sikit lagi, jangan give up!*",
     "<:1SAC_klove:940226178885767198> **Cikgu bagi hint:** *Jawapan lebih tinggi dari ni*",
     "<a:SAC_CatCrying:885761781870497832> **Rendah lagi ni...** *Naikkan lebih tinggi, jangan malu-malu!*",
@@ -95,8 +95,7 @@ function startGame(message, min = 1, max = 100000000) {
   
   let output = `${decorativeLine}\n\n`;
   output += `## ${diamond} __**Game Teka Nombor**__\n\n`;
-  output += `-# Taip nombor untuk meneka (contoh: 5000000)\n`;
-  output += `-# Atau taip !henti-no untuk hentikan permainan\n\n`;
+  output += `-# Taip nombor untuk meneka (contoh: 5000000)\n\n`;
   output += `${decorativeLine}`;
 
   console.log(`🎮 Game started! Secret number: ${secretNumber}`);
