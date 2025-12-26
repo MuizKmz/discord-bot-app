@@ -153,7 +153,7 @@ function guessNumber(guess, message, db = null, USE_DATABASE = false, addPoints 
     output += `<a:SAC_zzBunnywow:919772019099312190> **BETUL, ANAK MURID!**\n`;
     output += `***Cikgu bangga dengan awak*** <a:SAC_aaparty2:878675028282052708>\n\n`;
     output += `**Jawapan yang betul ialah ${oldNumber.toLocaleString()}**\n\n`;
-    output += `📊 **Statistik:**\n`;
+    output += `<a:BongoCat:938259209185812480> **Statistik:**\n`;
     output += `├─ Percubaan: **${oldAttempts}** kali\n`;
     output += `├─ Pemenang: <@${message.author.id}>\n`;
     output += `└─ Mata: **+1 mata**\n\n`;
@@ -183,31 +183,31 @@ function guessNumber(guess, message, db = null, USE_DATABASE = false, addPoints 
     response = getRandomResponse(
       guessNum > secretNumber ? RESPONSES.tooHighExtreme : RESPONSES.tooLowExtreme
     );
-    emoji = guessNum > secretNumber ? "📉" : "📈";
+    emoji = guessNum > secretNumber ? "<a:Bang:885761781459468328>" : "<a:FlameBlue_SAC:1083763847145459762>";
   } else if (difference >= 10000000) {
     // Far but getting warmer
     response = getRandomResponse(
       guessNum > secretNumber ? RESPONSES.tooHighFar : RESPONSES.tooLowFar
     );
-    emoji = guessNum > secretNumber ? "🔥" : "❄️";
+    emoji = guessNum > secretNumber ? "<a:FlamePurple_SAC:1083763772423938118>" : "<a:FlameBlue_SAC:1083763847145459762>";
   } else if (difference >= 1000000) {
     // Close
     response = getRandomResponse(
       guessNum > secretNumber ? RESPONSES.tooHighClose : RESPONSES.tooLowClose
     );
-    emoji = guessNum > secretNumber ? "🔥🔥" : "❄️❄️";
+    emoji = guessNum > secretNumber ? "<a:FlameYellow_SAC:1083763793856823447><a:FlameYellow_SAC:1083763793856823447>" : "<a:FlameBlue_SAC:1083763847145459762><a:FlameBlue_SAC:1083763847145459762>";
   } else {
     // Very close!
     response = getRandomResponse(
       guessNum > secretNumber ? RESPONSES.tooHighVeryClose : RESPONSES.tooLowVeryClose
     );
-    emoji = guessNum > secretNumber ? "🔥🔥🔥" : "❄️❄️❄️";
+    emoji = guessNum > secretNumber ? "<a:FlamePurple_SAC:1083763772423938118><a:FlamePurple_SAC:1083763772423938118><a:FlamePurple_SAC:1083763772423938118>" : "<a:FlameBlue_SAC:1083763847145459762><a:FlameBlue_SAC:1083763847145459762><a:FlameBlue_SAC:1083763847145459762>";
   }
 
   let output = `${decorativeLine}\n\n`;
   output += `${response}\n\n`;
   output += `${emoji} **Tekaan:** ${guessNum.toLocaleString()}\n`;
-  output += `-# 🔢 **Percubaan:** ${attempts}\n\n`;
+  output += `-# <a:SAC_CatBite:1169137032262582325> **Percubaan:** ${attempts}\n\n`;
   output += `${decorativeLine}`;
 
   return {
@@ -230,9 +230,9 @@ function stopGame(userId) {
   const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(12);
   
   let output = `${decorativeLine}\n\n`;
-  output += `⛔ **Permainan dihentikan!**\n\n`;
-  output += `🔢 **Jawapan sebenar:** ${secretNumber.toLocaleString()}\n`;
-  output += `📊 **Percubaan:** ${attempts}\n\n`;
+  output += `<a:SAC_CatCrying:885761781870497832> **Permainan dihentikan!**\n\n`;
+  output += `<a:SAC_CatBite:1169137032262582325> **Jawapan sebenar:** ${secretNumber.toLocaleString()}\n`;
+  output += `<a:BongoCat:938259209185812480> **Percubaan:** ${attempts}\n\n`;
   output += `${decorativeLine}`;
 
   return {
@@ -260,9 +260,9 @@ function revealAnswer(userId, adminIds = []) {
   const decorativeLine = "<a:SAC_zzaline:878680793386483712>".repeat(12);
   
   let output = `${decorativeLine}\n\n`;
-  output += `🔐 **Admin Preview**\n\n`;
-  output += `🔢 **Jawapan:** ||${secretNumber.toLocaleString()}||\n`;
-  output += `📊 **Percubaan semasa:** ${attempts}\n\n`;
+  output += `<a:SAC_cikgumarah:1095596884325842954> **Admin Preview**\n\n`;
+  output += `<a:SAC_CatBite:1169137032262582325> **Jawapan:** ||${secretNumber.toLocaleString()}||\n`;
+  output += `<a:BongoCat:938259209185812480> **Percubaan semasa:** ${attempts}\n\n`;
   output += `-# Hanya admin boleh nampak mesej ini\n\n`;
   output += `${decorativeLine}`;
 
