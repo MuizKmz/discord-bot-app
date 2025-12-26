@@ -38,7 +38,10 @@ const RESPONSES = {
   tooLowFar: [
     "<a:FlameBlue_SAC:1083763847145459762> **Masih rendah** *Dah dekat, tapi masih bawah~*",
     "<a:BongoCat:938259209185812480> **Okay, Cikgu nampak usaha!** *Cuba naikkan sikit lagi, jangan give up!*",
-    "<:1SAC_klove:940226178885767198> **Cikgu bagi hint:** *Jawapan lebih tinggi dari ni*"
+    "<:1SAC_klove:940226178885767198> **Cikgu bagi hint:** *Jawapan lebih tinggi dari ni*",
+    "<a:SAC_CatCrying:885761781870497832> **Rendah lagi ni...** *Naikkan lebih tinggi, jangan malu-malu!*",
+    "<:1SAC_ksmile:940226219260129281> **Cuba naikkan lagi...** *Jawapan awak terlalu rendah~*",
+    "<a:AdmireHappy:885761775562280971> **Masih jauh lagi tu!** *Naik lagi, cikgu nampak potensi awak!*"
   ],
   
   // Difference 1,000,000 - 9,999,999
@@ -178,36 +181,45 @@ function guessNumber(guess, message, db = null, USE_DATABASE = false, addPoints 
   let response = "";
   let emoji = "";
   
-  if (difference >= 100000000) {
-    // Extreme difference
+  console.log(`🎯 Guess: ${guessNum}, Secret: ${secretNumber}, Difference: ${difference.toLocaleString()}`);
+  
+  // Check if guess is extremely proportionally off (less than 1% or more than 10x the answer)
+  const isExtremelyOff = (guessNum < secretNumber * 0.01) || (guessNum > secretNumber * 10);
+  
+  if (difference >= 100000000 || isExtremelyOff) {
+    // Extreme difference (>100M OR proportionally extreme)
+    console.log(`📍 Range: Extreme (${isExtremelyOff ? 'Proportionally extreme' : '>100M'})`);
     response = getRandomResponse(
       guessNum > secretNumber ? RESPONSES.tooHighExtreme : RESPONSES.tooLowExtreme
     );
     emoji = guessNum > secretNumber ? "<a:Bang:885761781459468328>" : "<a:FlameBlue_SAC:1083763847145459762>";
   } else if (difference >= 10000000) {
-    // Far but getting warmer
+    // Far but getting warmer (10M-99M)
+    console.log(`📍 Range: Far (10M-99M)`);
     response = getRandomResponse(
       guessNum > secretNumber ? RESPONSES.tooHighFar : RESPONSES.tooLowFar
     );
     emoji = guessNum > secretNumber ? "<a:FlamePurple_SAC:1083763772423938118>" : "<a:FlameBlue_SAC:1083763847145459762>";
   } else if (difference >= 1000000) {
-    // Close
+    // Close (1M-9M)
+    console.log(`📍 Range: Close (1M-9M)`);
     response = getRandomResponse(
       guessNum > secretNumber ? RESPONSES.tooHighClose : RESPONSES.tooLowClose
     );
     emoji = guessNum > secretNumber ? "<a:FlameYellow_SAC:1083763793856823447><a:FlameYellow_SAC:1083763793856823447>" : "<a:FlameBlue_SAC:1083763847145459762><a:FlameBlue_SAC:1083763847145459762>";
   } else {
-    // Very close!
+    // Very close! (<1M)
+    console.log(`📍 Range: Very Close (<1M)`);
     response = getRandomResponse(
       guessNum > secretNumber ? RESPONSES.tooHighVeryClose : RESPONSES.tooLowVeryClose
     );
     emoji = guessNum > secretNumber ? "<a:FlamePurple_SAC:1083763772423938118><a:FlamePurple_SAC:1083763772423938118><a:FlamePurple_SAC:1083763772423938118>" : "<a:FlameBlue_SAC:1083763847145459762><a:FlameBlue_SAC:1083763847145459762><a:FlameBlue_SAC:1083763847145459762>";
   }
 
-  let output = `${decorativeLine}\n\n`;
-  output += `${response}\n\n`;
-  output += `${emoji} **Tekaan:** ${guessNum.toLocaleString()}\n`;
-  output += `-# <a:SAC_CatBite:1169137032262582325> **Percubaan:** ${attempts}\n\n`;
+  let output = `${decorativeLine}\n`;
+  output += `\`Tekaan: ${guessNum.toLocaleString()}\`\n`;
+  output += `${response}\n`;
+  output += `-# **(Percubaan:** ${attempts})\n`;
   output += `${decorativeLine}`;
 
   return {
