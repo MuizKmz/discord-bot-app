@@ -54,14 +54,40 @@ const RESPONSES = {
     "<a:SAC_Pandabee:888458171826438225> **Sejuk sikit lagi!** *Jawapan awak rendah sikit je, naikkan sedikitttt*"
   ],
   
-  // Difference 1 - 999,999
+  // Difference 100 - 999,999
+  tooHighCloser: [
+    "<:1SAC_kkorek_hidung:940226241158598666> **Cikgu suruh naik satu anak tangga je,** *ni kamu panjat sampai bumbung sekolah!*",
+    "<a:SAC_CatCrying:885761781870497832> **Aduhai… tinggi lagi.** 👀 *Cikgu belum pencen, jangan buat darah tinggi.* 😆",
+    "<a:SAC_blue_pat:1095597019579547668> *Tak salah mencuba,* **cuma kali ni nombor kamu lebih tinggi dari yang cikgu simpan.**",
+    "<a:BlueRainbow_SAC:886123541597147158> **Masih jauh di atas sedikit,** *tapi cikgu suka semangat kamu.* <a:SAC_catkiss:886480233400786955>",
+    "<a:SAC_butteflypurple:955337354757951578> **Jawapan ni terbang tinggi, jom kita bawa dia turun sama-sama**"
+  ],
+  tooLowCloser: [
+    "<:SAC_Pain:880040007400849448> **Jawapan kamu ni macam usaha saat akhir…** 👀 *rendah dan menyedihkan.*",
+    "<a:CoffeeSpill:885761780821921793> **Pergi baca buku balik** *nombor ni terlalu bawah untuk jadi jawapan.*",
+    "<a:SAC_blue_pat:1095597019579547668> *Tak mengapa, nombor ni rendah sikit.* **Kita naikkan perlahan ya.**",
+    "<a:SAC_zzBunnywow:919772019099312190> *Ini langkah awal yang baik.* **Cuma nombor masih di bawah jawapan sebenar.**",
+    "<a:ako_raidenpeace:1039532531978076251> **Cikgu nampak usaha kamu. Cuba fikir nombor yang lebih besar sikit.**"
+  ],
+  
+  // Difference 1 - 99
   tooHighVeryClose: [
-    "<a:Hoho:885761779538472970> **Cikgu dah berdiri belakang** <a:AUM_LOOKBEHIND:938261465410994187> *Dah dekat sangat ni! turun sikit je..*",
-    "<a:SAC_aaparty2:878675028282052708> **Cikgu dah berdiri belakang** <a:AUM_LOOKBEHIND:938261465410994187> *Cuba adjust bawah sikit lagi, jangan gemuruh*"
+    "<a:Hoho:885761779538472970> **Cikgu dah berdiri belakang** 👀 *Dah dekat sangat ni! turun sikit je..*",
+    "<a:SAC_aaparty2:878675028282052708> **Cikgu dah berdiri belakang** 👀 *Cuba adjust bawah sikit lagi, jangan gemuruh.* 😆",
+    "<a:SAC_qubycheer:888459166438555659> **Turun sikit je,** *jangan gatal tambah naik nombor.*",
+    "<a:SAC_qubyheart:888765814461829121> *Cikgu nampak usaha kamu..* **cuma terlebih sikit je.**",
+    "<a:SAC_cheeklove:1074916483806806058> **Bagus! Tinggal turunkan sikit, cikgu yakin boleh.**",
+    "<a:FlameOrange_SAC:1083763871845720134> **Ini sangat dekat, kena turun sikit lagi.** *Cikgu senyum tengok usaha kamu.* <a:SAC_Sengih:1096442087584575690>",
+    "<:SAC_Aww:1096438715666149386> *Wah, dah hampir betul!* **Cuma masih tinggi sikit je...turn slow-slow ya~**"
   ],
   tooLowVeryClose: [
-    "<a:Hoho:885761779538472970> **Cikgu dah berdiri belakang** <a:AUM_LOOKBEHIND:938261465410994187> *Dah dekat sangat ni! naik sikit je..*",
-    "<a:SAC_qubycheer:888459166438555659> **Cikgu dah berdiri belakang** <a:AUM_LOOKBEHIND:938261465410994187> *Cuba adjust atas sikit lagi, jangan gemuruh*"
+    "<a:Hoho:885761779538472970> **Cikgu dah berdiri belakang** 👀 *Dah dekat sangat ni! naik sikit je..*",
+    "<a:SAC_qubycheer:888459166438555659> **Cikgu dah berdiri belakang** 👀 *Cuba adjust atas sikit lagi, jangan gemuruh* 😆",
+    "<a:SAC_zzbunnyrun:878844175590772766> **Dah nampak garisan penamat...** *jangan berhenti sekarang, naik slow-slow!*",
+    "<a:SAC_cubitpipi:1039532514257145948> *Okay okay... dah hampir lulus ni.* **Naik sikit je lagi! go go go!**",
+    "<a:SAC_cheeklove:1074916483806806058> **Cikgu bangga, tinggal tambah sedikit sahaja.**",
+    "<a:SAC_zzBunnywow:919772019099312190> **Ini jawapan yang sangat hampir. Naik sikit je..Teruskan!**",
+    "<a:ako_raidenpeace:1039532531978076251> **Dah hampir sampai. Naik sikit je lagi ya.**"
   ]
 };
 
@@ -203,9 +229,16 @@ function guessNumber(guess, message, db = null, USE_DATABASE = false, addPoints 
       guessNum > secretNumber ? RESPONSES.tooHighClose : RESPONSES.tooLowClose
     );
     emoji = guessNum > secretNumber ? "<a:FlameYellow_SAC:1083763793856823447><a:FlameYellow_SAC:1083763793856823447>" : "<a:FlameBlue_SAC:1083763847145459762><a:FlameBlue_SAC:1083763847145459762>";
+  } else if (difference >= 100) {
+    // Closer (100-999,999)
+    console.log(`📍 Range: Closer (100-999,999)`);
+    response = getRandomResponse(
+      guessNum > secretNumber ? RESPONSES.tooHighCloser : RESPONSES.tooLowCloser
+    );
+    emoji = guessNum > secretNumber ? "<a:FlameYellow_SAC:1083763793856823447>" : "<a:FlameBlue_SAC:1083763847145459762>";
   } else {
-    // Very close! (<1M)
-    console.log(`📍 Range: Very Close (<1M)`);
+    // Very close! (1-99)
+    console.log(`📍 Range: Very Close (1-99)`);
     response = getRandomResponse(
       guessNum > secretNumber ? RESPONSES.tooHighVeryClose : RESPONSES.tooLowVeryClose
     );
